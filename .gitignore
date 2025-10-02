@@ -1,0 +1,21 @@
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter and notebook clutter
+*.ipynb_checkpoints
+
+# Environment files
+.env
+.venv/
+*.env
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
