@@ -1,0 +1,11 @@
+Copyright © 2025 Harshwardhan
+
+All rights reserved.
+
+This repository and its contents are protected under copyright law.  
+No part of this project may be reproduced, distributed, or transmitted in any form or by any means, including but not limited to electronic, mechanical, photocopying, recording, or other methods, without the prior written permission of the author.
+
+Unauthorized use, reproduction, or distribution is strictly prohibited.
+
+This project is intended for portfolio and educational purposes only.  
+Commercial use, redistribution, or derivative works are not permitted without explicit consent.
