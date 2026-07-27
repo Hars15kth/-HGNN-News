@@ -1,74 +1,73 @@
 # Hypergraph Discovery: HGNN vs Transformer on MIND-Small
 
-A mathematical benchmark comparing **hypergraph neural message passing** with **pairwise self-attention** for the recovery and ranking of higher-order interaction structures in the **MIND-Small** news recommendation dataset.
+A mathematical benchmark comparing a **Hypergraph Neural Network (HGNN)** with a **Transformer** for higher-order bundle discovery on the [MIND-Small](https://msnews.github.io/) dataset.
 
-The central question is:
+The project studies whether explicitly representing multi-entity relations through a hypergraph incidence structure produces better ranking performance than learning relations through pairwise self-attention.
 
-> Does explicitly representing multi-entity relations as hyperedges recover bundle structure more effectively than reducing the same observations to pairwise attention interactions?
+The central hypothesis is:
+
+$$
+\text{explicit higher-order structure}
+\quad \Longrightarrow \quad
+\text{improved bundle discovery}
+$$
 
 The benchmark evaluates:
 
-* higher-order structural representation;
-* top-(K) ranking quality;
-* classification performance;
-* optimisation behaviour;
-* robustness across item-popularity regimes;
-* computational reproducibility.
+* Hit Rate at 10;
+* Normalised Discounted Cumulative Gain at 10;
+* precision;
+* recall;
+* accuracy;
+* optimisation loss;
+* robustness across item-popularity segments.
 
 ---
 
-## 1. Problem Formulation
+## 1. Mathematical Problem
 
-Let
+Let the entity set be
 
-[
-\mathcal{V}={v_1,\ldots,v_n}
-]
+$$
+\mathcal{V} = {v_1,v_2,\ldots,v_n}.
+$$
 
-denote the set of entities, such as users, news articles, topics, categories, or behavioural states.
+The entities may represent users, articles, topics, categories, or interaction states.
 
-A conventional graph represents interactions using pairwise edges
+A conventional graph encodes pairwise relations:
 
-[
-\mathcal{E}_{2}\subseteq \mathcal{V}\times\mathcal{V}.
-]
+$$
+\mathcal{E}_2 \subseteq \mathcal{V}\times\mathcal{V}.
+$$
 
-This assumes that every relevant relation can be decomposed into independent pairs.
+Every relation therefore has the form
 
-The hypergraph model instead uses
+$$
+(v_i,v_j).
+$$
 
-[
-\mathcal{H}=(\mathcal{V},\mathcal{E}),
-]
+A hypergraph is defined as
 
-where each hyperedge
+$$
+\mathcal{H} = (\mathcal{V},\mathcal{E}),
+$$
 
-[
-e\in\mathcal{E},
-\qquad
-e\subseteq\mathcal{V},
-]
+where each hyperedge satisfies
 
-may connect an arbitrary number of entities simultaneously.
+$$
+e \subseteq \mathcal{V}.
+$$
 
-Thus,
+Unlike an ordinary edge, a hyperedge may connect more than two entities:
 
-[
-|e|\geq 2,
-]
+$$
+|e| \geq 2.
+$$
 
-and potentially
+For example, a behavioural bundle may be represented as
 
-[
-|e|>2.
-]
-
-A behavioural bundle can therefore be represented directly as
-
-[
-e_k
-===
-
+$$
+e_k =
 {
 u_i,
 a_{j_1},
@@ -78,153 +77,126 @@ a_{j_m},
 c_r,
 t_s
 },
-]
+$$
 
 where:
 
-* (u_i) is a user;
-* (a_{j_\ell}) is an interacted article;
-* (c_r) is a category or topic;
-* (t_s) is a contextual or temporal state.
+* $u_i$ is a user;
+* $a_{j_\ell}$ is an interacted article;
+* $c_r$ is a category or topic;
+* $t_s$ is a temporal or contextual state.
 
-The modelling objective is to learn a scoring function
+The learning objective is to construct a scoring function
 
-[
-f_{\theta}:
-\mathcal{V}\times\mathcal{C}
-\longrightarrow
+$$
+f_\theta :
+\mathcal{U}\times\mathcal{A}
+\rightarrow
 \mathbb{R},
-]
+$$
 
-such that, for user (u_i) and candidate item (a_j),
+where
 
-[
-s_{ij}
-======
+$$
+s_{ij} = f_\theta(u_i,a_j)
+$$
 
-f_{\theta}(u_i,a_j)
-]
+is the predicted compatibility between user $u_i$ and candidate article $a_j$.
 
-induces a ranking
+For a relevant candidate $a_j^+$ and a non-relevant candidate $a_k^-$, the desired ordering is
 
-[
-a_{i,(1)}
-\succeq
-a_{i,(2)}
-\succeq
-\cdots
-\succeq
-a_{i,(M)}.
-]
-
-The desired ordering satisfies
-
-[
-s_{ij}^{+}>s_{ik}^{-}
-]
-
-for relevant item (a_j^{+}) and non-relevant item (a_k^{-}).
+$$
+s_{ij}^+ > s_{ik}^-.
+$$
 
 ---
 
-## 2. Hypergraph Representation
+## 2. Hypergraph Incidence Representation
 
-### 2.1 Incidence Matrix
+The hypergraph is encoded by an incidence matrix
 
-The hypergraph structure is encoded by the incidence matrix
+$$
+\mathbf{H}
+\in
+{0,1}^{|\mathcal{V}|\times|\mathcal{E}|}.
+$$
 
-[
-\mathbf{H}\in{0,1}^{|\mathcal{V}|\times|\mathcal{E}|},
-]
+Its entries are defined by
 
-with entries
-
-[
+$$
 H_{ve}
 ======
 
 \begin{cases}
-1, & v\in e,\
-0, & v\notin e.
+1, & \text{when } v\in e, \
+0, & \text{when } v\notin e.
 \end{cases}
-]
+$$
 
-Unlike a graph adjacency matrix, (\mathbf{H}) preserves the identity of each multi-entity relation rather than replacing it with a collection of pairwise edges.
+The incidence matrix preserves the identity of each higher-order relation.
 
----
+An adjacency matrix records whether two vertices are connected. The incidence matrix instead records which vertices participate in the same multi-entity event.
 
-### 2.2 Vertex and Hyperedge Degrees
+Let the hyperedge-weight matrix be
 
-For hyperedge weights
-
-[
+$$
 \mathbf{W}
 ==========
 
-\operatorname{diag}(w_1,\ldots,w_{|\mathcal{E}|}),
-]
+\mathrm{diag}(w_1,w_2,\ldots,w_{|\mathcal{E}|}).
+$$
 
-the vertex degree is
+The degree of a vertex $v$ is
 
-[
+$$
 d(v)
 ====
 
 \sum_{e\in\mathcal{E}}
-w_eH_{ve},
-]
+w_e H_{ve}.
+$$
 
-and the hyperedge degree is
+The degree of a hyperedge $e$ is
 
-[
+$$
 \delta(e)
 =========
 
 \sum_{v\in\mathcal{V}}
 H_{ve}.
-]
+$$
 
-The corresponding diagonal degree matrices are
+The corresponding degree matrices are
 
-[
+$$
 \mathbf{D}_v
 ============
 
-\operatorname{diag}
+\mathrm{diag}
 \bigl(
-d(v_1),\ldots,d(v_{|\mathcal{V}|})
-\bigr),
-]
+d(v_1),d(v_2),\ldots,d(v_{|\mathcal{V}|})
+\bigr)
+$$
 
 and
 
-[
+$$
 \mathbf{D}_e
 ============
 
-\operatorname{diag}
+\mathrm{diag}
 \bigl(
-\delta(e_1),\ldots,\delta(e_{|\mathcal{E}|})
+\delta(e_1),\delta(e_2),\ldots,\delta(e_{|\mathcal{E}|})
 \bigr).
-]
+$$
 
 ---
 
-### 2.3 Normalised Hypergraph Propagation
-
-Let
-
-[
-\mathbf{X}^{(0)}
-\in
-\mathbb{R}^{|\mathcal{V}|\times d_0}
-]
-
-be the initial feature matrix.
+## 3. Hypergraph Propagation Operator
 
 The normalised hypergraph propagation operator is
 
-[
+$$
 \mathbf{P}_{\mathcal{H}}
 ========================
 
@@ -232,13 +204,23 @@ The normalised hypergraph propagation operator is
 \mathbf{H}
 \mathbf{W}
 \mathbf{D}_e^{-1}
-\mathbf{H}^{\top}
+\mathbf{H}^{\mathsf{T}}
 \mathbf{D}_v^{-1/2}.
-]
+$$
 
-A hypergraph neural layer is then defined by
+Let
 
-[
+$$
+\mathbf{X}^{(0)}
+\in
+\mathbb{R}^{|\mathcal{V}|\times d_0}
+$$
+
+be the initial entity-feature matrix.
+
+A hypergraph neural layer is defined by
+
+$$
 \mathbf{X}^{(\ell+1)}
 =====================
 
@@ -249,35 +231,35 @@ A hypergraph neural layer is then defined by
 \mathbf{\Theta}^{(\ell)}
 +
 \mathbf{b}^{(\ell)}
-\right),
-]
+\right).
+$$
 
-where:
+Here:
 
-* (\mathbf{X}^{(\ell)}) is the representation at layer (\ell);
-* (\mathbf{\Theta}^{(\ell)}) is a trainable transformation;
-* (\mathbf{b}^{(\ell)}) is a bias term;
-* (\sigma) is a nonlinear activation.
+* $\mathbf{X}^{(\ell)}$ is the representation at layer $\ell$;
+* $\mathbf{\Theta}^{(\ell)}$ is a trainable weight matrix;
+* $\mathbf{b}^{(\ell)}$ is a bias vector;
+* $\sigma$ is a nonlinear activation.
 
-For the implemented two-layer model,
+For the first layer,
 
-[
+$$
 \mathbf{X}^{(1)}
 ================
 
-\operatorname{ReLU}
+\mathrm{ReLU}
 \left(
 \mathbf{P}_{\mathcal{H}}
 \mathbf{X}^{(0)}
 \mathbf{\Theta}^{(0)}
 +
 \mathbf{b}^{(0)}
-\right),
-]
+\right).
+$$
 
-followed by
+For the second layer,
 
-[
+$$
 \mathbf{Z}_{\mathcal{H}}
 ========================
 
@@ -286,340 +268,350 @@ followed by
 \mathbf{\Theta}^{(1)}
 +
 \mathbf{b}^{(1)}.
-]
+$$
 
-The operator
+The propagation process is therefore
 
-[
-\mathbf{H}^{\top}
+$$
+\text{vertex}
+\rightarrow
+\text{hyperedge}
+\rightarrow
+\text{vertex}.
+$$
+
+The term
+
+$$
+\mathbf{H}^{\mathsf{T}}
 \mathbf{D}_v^{-1/2}
-]
+\mathbf{X}^{(\ell)}
+$$
 
-aggregates vertex information into hyperedge states, while
+aggregates vertex information into hyperedge representations.
 
-[
+The term
+
+$$
 \mathbf{D}_v^{-1/2}
 \mathbf{H}
 \mathbf{W}
 \mathbf{D}_e^{-1}
-]
+$$
 
-returns the resulting higher-order information to the participating vertices.
+then distributes the hyperedge information back to participating vertices.
 
-Consequently,
-
-[
-\text{vertex}
-\longrightarrow
-\text{hyperedge}
-\longrightarrow
-\text{vertex}
-]
-
-is performed without destroying the original multi-entity relation.
+This allows information to propagate through a complete multi-entity relation without first decomposing it into independent pairs.
 
 ---
 
-## 3. Hypergraph Laplacian Interpretation
+## 4. Hypergraph Laplacian
 
 The normalised hypergraph Laplacian is
 
-[
+$$
 \mathbf{L}_{\mathcal{H}}
 ========================
 
 ## \mathbf{I}
 
 \mathbf{P}_{\mathcal{H}}.
-]
+$$
 
-Therefore,
+Equivalently,
 
-[
+$$
 \mathbf{P}_{\mathcal{H}}
 ========================
 
 ## \mathbf{I}
 
 \mathbf{L}_{\mathcal{H}}.
-]
+$$
 
-Hypergraph propagation may consequently be interpreted as a structure-aware smoothing operation over higher-order relational geometry.
+For an embedding matrix
 
-For an embedding
-
-[
+$$
 \mathbf{Z}
 ==========
 
-[\mathbf{z}*1,\ldots,\mathbf{z}*{|\mathcal{V}|}]^{\top},
-]
+\begin{bmatrix}
+\mathbf{z}_1^{\mathsf{T}} \
+\mathbf{z}*2^{\mathsf{T}} \
+\vdots \
+\mathbf{z}*{|\mathcal{V}|}^{\mathsf{T}}
+\end{bmatrix},
+$$
 
-the structural energy is
+the hypergraph structural energy is
 
-[
+$$
 \mathcal{E}_{\mathcal{H}}(\mathbf{Z})
 =====================================
 
-\operatorname{Tr}
+\mathrm{Tr}
 \left(
-\mathbf{Z}^{\top}
+\mathbf{Z}^{\mathsf{T}}
 \mathbf{L}_{\mathcal{H}}
 \mathbf{Z}
 \right).
-]
+$$
 
-Minimising this energy encourages entities participating in the same hyperedge to acquire compatible representations:
+A low value of this energy encourages entities participating in the same hyperedge to obtain compatible representations.
 
-[
+Thus,
+
+$$
 v_i,v_j\in e
-\quad\Longrightarrow\quad
+\quad \Longrightarrow \quad
 |\mathbf{z}_i-\mathbf{z}_j|_2
-\text{ is controlled by the shared relational structure}.
-]
+\text{ is structurally constrained}.
+$$
 
-This is stronger than assuming that the observed structure consists only of independent pairs.
+The constraint is determined by shared higher-order membership rather than only pairwise adjacency.
 
 ---
 
-## 4. Transformer Baseline
+## 5. Transformer Baseline
 
-The Transformer baseline represents an interaction sequence as
+Let an interaction sequence be represented by
 
-[
+$$
 \mathbf{S}
 ==========
 
-[\mathbf{s}_1,\ldots,\mathbf{s}_m]^{\top}
+\begin{bmatrix}
+\mathbf{s}_1^{\mathsf{T}} \
+\mathbf{s}_2^{\mathsf{T}} \
+\vdots \
+\mathbf{s}_m^{\mathsf{T}}
+\end{bmatrix}
 \in
 \mathbb{R}^{m\times d}.
-]
+$$
 
-For each attention head,
+The query, key, and value matrices are
 
-[
+$$
 \mathbf{Q}
 ==========
 
 \mathbf{S}\mathbf{W}_Q,
-\qquad
+$$
+
+$$
 \mathbf{K}
 ==========
 
 \mathbf{S}\mathbf{W}_K,
-\qquad
+$$
+
+and
+
+$$
 \mathbf{V}
 ==========
 
 \mathbf{S}\mathbf{W}_V.
-]
+$$
 
 Scaled dot-product attention is
 
-[
-\operatorname{Attn}
-(\mathbf{Q},\mathbf{K},\mathbf{V})
-==================================
-
-\operatorname{softmax}
+$$
+\mathrm{Attention}
 \left(
-\frac{\mathbf{Q}\mathbf{K}^{\top}}
-{\sqrt{d_k}}
+\mathbf{Q},
+\mathbf{K},
+\mathbf{V}
+\right)
+=======
+
+\mathrm{softmax}
+\left(
+\frac{
+\mathbf{Q}\mathbf{K}^{\mathsf{T}}
+}{
+\sqrt{d_k}
+}
 \right)
 \mathbf{V}.
-]
+$$
 
-For (h) heads,
+The attention coefficient between positions $i$ and $j$ is
 
-[
-\operatorname{MHA}(\mathbf{S})
-==============================
-
-\operatorname{Concat}
-\left(
-\operatorname{head}_1,
-\ldots,
-\operatorname{head}_h
-\right)
-\mathbf{W}_O.
-]
-
-Each attention coefficient
-
-[
+$$
 \alpha_{ij}
 ===========
 
 \frac{
 \exp
 \left(
-\mathbf{q}_i^{\top}\mathbf{k}*j/\sqrt{d_k}
+\mathbf{q}_i^{\mathsf{T}}\mathbf{k}*j/\sqrt{d_k}
 \right)
 }{
 \sum*{r=1}^{m}
 \exp
 \left(
-\mathbf{q}_i^{\top}\mathbf{k}_r/\sqrt{d_k}
+\mathbf{q}_i^{\mathsf{T}}\mathbf{k}_r/\sqrt{d_k}
 \right)
-}
-]
-
-models a pairwise interaction between positions (i) and (j).
-
-Although multiple layers can approximate complex dependencies, the primitive relation remains
-
-[
-(i,j),
-]
-
-whereas a hypergraph layer begins with the higher-order object
-
-[
-e={i_1,\ldots,i_r}.
-]
-
-The benchmark therefore compares:
-
-[
-\boxed{
-\text{learned pairwise contextualisation}
-}
-]
-
-against
-
-[
-\boxed{
-\text{explicit higher-order relational propagation}
 }.
-]
+$$
+
+Each primitive attention coefficient therefore represents a pairwise relation:
+
+$$
+(i,j).
+$$
+
+Multiple attention layers may learn complex contextual dependencies, but their elementary interaction remains pairwise.
+
+The mathematical comparison is therefore
+
+$$
+\mathbf{D}_v^{-1/2}
+\mathbf{H}
+\mathbf{W}
+\mathbf{D}_e^{-1}
+\mathbf{H}^{\mathsf{T}}
+\mathbf{D}_v^{-1/2}
+$$
+
+versus
+
+$$
+\mathrm{softmax}
+\left(
+\frac{
+\mathbf{Q}\mathbf{K}^{\mathsf{T}}
+}{
+\sqrt{d_k}
+}
+\right).
+$$
+
+The first operator begins from explicit higher-order incidence structure.
+
+The second learns pairwise contextual weights from the input sequence.
 
 ---
 
-## 5. Structural Difference
+## 6. Why Pairwise Reduction Can Lose Information
 
-A bundle containing (r) entities is represented by the HGNN as one relation:
+Consider a hyperedge containing $r$ entities:
 
-[
-e
-=
+$$
+e = {v_1,v_2,\ldots,v_r}.
+$$
 
-{v_1,\ldots,v_r}.
-]
+A pairwise expansion replaces this hyperedge with up to
 
-A pairwise reduction replaces it with up to
-
-[
+$$
 \binom{r}{2}
 ============
 
 \frac{r(r-1)}{2}
-]
+$$
 
-edges.
+ordinary edges.
 
-However, the set of pairwise projections does not necessarily preserve the identity of the original bundle:
+However,
 
-[
+$$
 e
-\not\equiv
-\bigcup_{i<j}
-(v_i,v_j).
-]
+\neq
+\bigcup_{1\leq i<j\leq r}
+(v_i,v_j)
+$$
 
-The pairwise expansion records which entities co-occur, but may lose the fact that they participated in one common higher-order event.
+as relational objects.
 
-The HGNN instead retains the factorisation
+The pairwise expansion records that individual pairs are connected, but it does not necessarily preserve the fact that all $r$ entities participated in one common event.
 
-[
+For example, the bundle
+
+$$
+{
+\text{user},
+\text{article},
+\text{topic},
+\text{session},
+\text{time}
+}
+$$
+
+contains a joint relation that is not identical to the set
+
+$$
+{
+(\text{user},\text{article}),
+(\text{user},\text{topic}),
+(\text{article},\text{topic}),
+\ldots
+}.
+$$
+
+The HGNN preserves the factorisation
+
+$$
 \mathcal{V}
-\xrightarrow{\mathbf{H}^{\top}}
+\xrightarrow{\mathbf{H}^{\mathsf{T}}}
 \mathcal{E}
 \xrightarrow{\mathbf{H}}
 \mathcal{V}.
-]
+$$
 
-This gives the model an explicit inductive bias for discovering structures such as:
-
-[
-\text{user}
-+
-\text{topic}
-+
-\text{article cluster}
-+
-\text{interaction context}.
-]
+This gives the model an explicit inductive bias for recovering multi-entity structure.
 
 ---
 
-## 6. Prediction Layer
+## 7. Prediction Function
 
 Let
 
-[
+$$
 \mathbf{z}_{u_i}
 \in
 \mathbb{R}^{d}
-]
+$$
 
-be the learned user representation and
+be the learned representation of user $u_i$, and let
 
-[
+$$
 \mathbf{z}_{a_j}
 \in
 \mathbb{R}^{d}
-]
+$$
 
-the candidate-item representation.
+be the learned representation of candidate article $a_j$.
 
-A compatibility score may be written as
+A basic compatibility score is
 
-[
+$$
 s_{ij}
 ======
 
-\mathbf{z}*{u_i}^{\top}
-\mathbf{z}*{a_j},
-]
+\mathbf{z}*{u_i}^{\mathsf{T}}
+\mathbf{z}*{a_j}.
+$$
 
-or, more generally,
+The corresponding relevance probability is
 
-[
-s_{ij}
-======
-
-\mathbf{w}^{\top}
-\phi
-\left(
-\mathbf{z}*{u_i},
-\mathbf{z}*{a_j},
-\mathbf{z}*{u_i}\odot\mathbf{z}*{a_j},
-|\mathbf{z}*{u_i}-\mathbf{z}*{a_j}|
-\right)
-+b.
-]
-
-The predicted relevance probability is
-
-[
+$$
 \widehat{p}_{ij}
 ================
 
-# \sigma(s_{ij})
-
 \frac{1}{1+\exp(-s_{ij})}.
-]
+$$
 
-For binary relevance labels
+For binary labels
 
-[
+$$
 y_{ij}\in{0,1},
-]
+$$
 
-the binary cross-entropy objective is
+the binary cross-entropy loss is
 
-[
+$$
 \mathcal{L}_{\mathrm{BCE}}
 ==========================
 
@@ -628,16 +620,15 @@ the binary cross-entropy objective is
 \frac{1}{N}
 \sum_{(i,j)}
 \left[
-y_{ij}\log\widehat{p}*{ij}
+y_{ij}\log(\widehat{p}*{ij})
 +
-(1-y*{ij})
-\log(1-\widehat{p}_{ij})
+(1-y*{ij})\log(1-\widehat{p}_{ij})
 \right].
-]
+$$
 
-With regularisation,
+With quadratic regularisation,
 
-[
+$$
 \mathcal{L}
 ===========
 
@@ -645,11 +636,11 @@ With regularisation,
 +
 \lambda
 |\theta|_2^2.
-]
+$$
 
-A pairwise ranking formulation can alternatively be expressed as
+A pairwise ranking objective may alternatively be written as
 
-[
+$$
 \mathcal{L}_{\mathrm{rank}}
 ===========================
 
@@ -657,143 +648,138 @@ A pairwise ranking formulation can alternatively be expressed as
 
 \sum_{(i,j,k)}
 \log
-\sigma
-\left(
-s_{ij}^{+}-s_{ik}^{-}
-\right).
-]
+\left[
+\frac{
+1
+}{
+1+\exp\left(-(s_{ij}^{+}-s_{ik}^{-})\right)
+}
+\right].
+$$
 
 ---
 
-## 7. Evaluation Metrics
+## 8. Evaluation Metrics
 
-### Hit Rate at (K)
+### Hit Rate at 10
 
-For user (u_i), let
-
-[
-\mathcal{R}_i
-]
-
-be the relevant-item set and
-
-[
-\widehat{\mathcal{R}}_i^{(K)}
-]
-
-the top-(K) predicted set.
+Let $\mathcal{R}_i$ be the relevant-item set for user $u_i$, and let $\widehat{\mathcal{R}}_i^{(10)}$ be the ten highest-ranked predictions.
 
 Then
 
-[
-\operatorname{HR@K}
-===================
+$$
+\mathrm{HR@10}
+==============
 
 \frac{1}{N}
 \sum_{i=1}^{N}
-\mathbb{1}
-\left[
+\mathbf{1}
+\left(
 \mathcal{R}_i
 \cap
-\widehat{\mathcal{R}}_i^{(K)}
+\widehat{\mathcal{R}}_i^{(10)}
 \neq
 \varnothing
-\right].
-]
+\right).
+$$
 
----
+### Discounted Cumulative Gain
 
-### Normalised Discounted Cumulative Gain at (K)
+For user $u_i$,
 
-[
-\operatorname{DCG@K}_i
-======================
+$$
+\mathrm{DCG@10}_i
+=================
 
-\sum_{r=1}^{K}
+\sum_{r=1}^{10}
 \frac{
-2^{\operatorname{rel}_{i,r}}-1
+2^{\mathrm{rel}_{i,r}}-1
 }{
 \log_2(r+1)
 }.
-]
+$$
 
-The normalised score is
+### Normalised Discounted Cumulative Gain
 
-[
-\operatorname{NDCG@K}_i
-=======================
+$$
+\mathrm{NDCG@10}_i
+==================
 
 \frac{
-\operatorname{DCG@K}_i
+\mathrm{DCG@10}_i
 }{
-\operatorname{IDCG@K}_i
+\mathrm{IDCG@10}_i
 }.
-]
+$$
 
-The reported aggregate is
+The mean score is
 
-[
-\operatorname{NDCG@K}
-=====================
+$$
+\mathrm{NDCG@10}
+================
 
 \frac{1}{N}
 \sum_{i=1}^{N}
-\operatorname{NDCG@K}_i.
-]
-
----
+\mathrm{NDCG@10}_i.
+$$
 
 ### Precision
 
-[
-\operatorname{Precision}
-========================
+$$
+\mathrm{Precision}
+==================
 
-\frac{\mathrm{TP}}
-{\mathrm{TP}+\mathrm{FP}}.
-]
+\frac{
+\mathrm{TP}
+}{
+\mathrm{TP}+\mathrm{FP}
+}.
+$$
 
 ### Recall
 
-[
-\operatorname{Recall}
-=====================
+$$
+\mathrm{Recall}
+===============
 
-\frac{\mathrm{TP}}
-{\mathrm{TP}+\mathrm{FN}}.
-]
+\frac{
+\mathrm{TP}
+}{
+\mathrm{TP}+\mathrm{FN}
+}.
+$$
 
 ### Accuracy
 
-[
-\operatorname{Accuracy}
-=======================
+$$
+\mathrm{Accuracy}
+=================
 
 \frac{
 \mathrm{TP}+\mathrm{TN}
 }{
 \mathrm{TP}+\mathrm{TN}+\mathrm{FP}+\mathrm{FN}
 }.
-]
+$$
 
 ---
 
-## 8. Benchmark Results
+## 9. Results
 
-| Metric     |      HGNN |     Transformer | Relative HGNN Gain |
-| :--------- | --------: | --------------: | -----------------: |
-| HR@10      | **0.842** |           0.611 |          **37.8%** |
-| NDCG@10    | **0.791** |           0.574 |          **37.8%** |
-| Precision  | **0.900** |           0.650 |          **38.5%** |
-| Recall     | **0.870** |           0.600 |          **45.0%** |
-| Accuracy   | **0.900** |           0.650 |          **38.5%** |
-| Final Loss | **0.214** | (\approx 0.750) |    **71.5% lower** |
+| Metric     |      HGNN |         Transformer |
+| :--------- | --------: | ------------------: |
+| HR@10      | **0.842** |               0.611 |
+| NDCG@10    | **0.791** |               0.574 |
+| Precision  | **0.900** |               0.650 |
+| Recall     | **0.870** |               0.600 |
+| Accuracy   | **0.900** |               0.650 |
+| Final loss | **0.214** | approximately 0.750 |
 
-For any metric (M) where larger values are preferred, the relative improvement is
+For a performance metric $M$ where larger values are preferable, define the relative improvement as
 
-[
-\Delta_{\mathrm{rel}}(M)
-========================
+$$
+\Delta_M
+========
 
 \frac{
 M_{\mathrm{HGNN}}
@@ -803,37 +789,78 @@ M_{\mathrm{Transformer}}
 }{
 M_{\mathrm{Transformer}}
 }
-\times 100%.
-]
+\times 100.
+$$
 
-Hence,
+For HR@10,
 
-[
-\Delta_{\mathrm{rel}}(\operatorname{HR@10})
-===========================================
+$$
+\Delta_{\mathrm{HR@10}}
+=======================
 
-\frac{0.842-0.611}{0.611}
-\times 100%
-\approx
-37.8%,
-]
-
-and
-
-[
-\Delta_{\mathrm{rel}}(\operatorname{NDCG@10})
-=============================================
-
-\frac{0.791-0.574}{0.574}
-\times 100%
+\frac{
+0.842-0.611
+}{
+0.611
+}
+\times 100
 \approx
 37.8%.
-]
+$$
 
-For loss, where smaller values are preferred,
+For NDCG@10,
 
-[
-\Delta_{\mathrm{loss}}
+$$
+\Delta_{\mathrm{NDCG@10}}
+=========================
+
+\frac{
+0.791-0.574
+}{
+0.574
+}
+\times 100
+\approx
+37.8%.
+$$
+
+For precision,
+
+$$
+\Delta_{\mathrm{Precision}}
+===========================
+
+\frac{
+0.900-0.650
+}{
+0.650
+}
+\times 100
+\approx
+38.5%.
+$$
+
+For recall,
+
+$$
+\Delta_{\mathrm{Recall}}
+========================
+
+\frac{
+0.870-0.600
+}{
+0.600
+}
+\times 100
+==========
+
+45.0%.
+$$
+
+Since lower loss is preferable, the relative loss reduction is
+
+$$
+\Delta_{\mathrm{Loss}}
 ======================
 
 \frac{
@@ -841,170 +868,144 @@ For loss, where smaller values are preferred,
 }{
 0.750
 }
-\times 100%
+\times 100
 \approx
 71.5%.
-]
+$$
 
-The benchmark therefore gives
+The primary empirical inequalities are
 
-[
-\operatorname{HR@10}_{\mathrm{HGNN}}
-
->
-
-\operatorname{HR@10}_{\mathrm{Transformer}},
-]
-
-[
-\operatorname{NDCG@10}_{\mathrm{HGNN}}
-
->
-
-\operatorname{NDCG@10}_{\mathrm{Transformer}},
-]
+$$
+0.842 > 0.611
+$$
 
 and
 
-[
-\mathcal{L}*{\mathrm{HGNN}}
-<
-\mathcal{L}*{\mathrm{Transformer}}.
-]
+$$
+0.791 > 0.574.
+$$
 
-Full visual comparisons and metric summaries are available in:
+Therefore,
 
-[`results/summary.md`](results/summary.md)
+$$
+\mathrm{HR@10}_{\mathrm{HGNN}}
+
+>
+
+\mathrm{HR@10}_{\mathrm{Transformer}}
+$$
+
+and
+
+$$
+\mathrm{NDCG@10}_{\mathrm{HGNN}}
+
+>
+
+\mathrm{NDCG@10}_{\mathrm{Transformer}}.
+$$
+
+Full visual comparisons and experimental summaries are available in [`results/summary.md`](results/summary.md).
 
 ---
 
-## 9. Interpretation
+## 10. Experimental Interpretation
 
-The results support the hypothesis that the observations contain relevant structure of order greater than two:
+The benchmark supports the hypothesis that the dataset contains predictive relational structure of order greater than two:
 
-[
+$$
 \exists e\in\mathcal{E}
-\quad\text{such that}\quad
-|e|>2,
-]
+\text{ such that }
+|e|>2.
+$$
 
-and that explicitly preserving this structure improves ranking quality.
+The observed performance relation is
 
-The observed relation is
+$$
+\text{higher-order incidence modelling}
+\rightarrow
+\text{improved ranking quality}.
+$$
 
-[
-\text{explicit higher-order incidence structure}
-\Longrightarrow
-\text{improved bundle recovery}.
-]
+This result does not imply that an HGNN is universally superior to every Transformer architecture.
 
-The benchmark does **not** imply that Transformers are universally weaker than hypergraph models.
+The benchmark-specific conclusion is:
 
-Instead, it establishes that under this experimental construction,
+$$
+\text{HGNN performance}
 
-[
-\text{HGNN inductive bias}
-]
+>
 
-is better aligned with the bundle-discovery task than the selected Transformer baseline.
+\text{selected Transformer baseline performance}
+$$
 
-The main empirical conclusion is therefore:
+under the implemented data construction, training procedure, and evaluation protocol.
 
-[
-\boxed{
-\text{When the target phenomenon is intrinsically multi-entity,}
-\quad
-\text{higher-order propagation can outperform pairwise attention.}
-}
-]
+The evidence indicates that the HGNN inductive bias was more closely aligned with the bundle-discovery structure of this task.
 
 ---
 
-## 10. Popularity-Segment Robustness
+## 11. Popularity-Segment Robustness
 
-Let item popularity be
+Let the popularity of article $a_j$ be
 
-[
+$$
 \pi(a_j)
 ========
 
 \sum_{i=1}^{N}
-\mathbb{1}
-\left[
-u_i\text{ interacted with }a_j
-\right].
-]
+\mathbf{1}
+\left(
+u_i
+\text{ interacted with }
+a_j
+\right).
+$$
 
-Items may be partitioned into popularity strata
+The article set may be partitioned into
 
-[
+$$
 \mathcal{A}
 ===========
 
 \mathcal{A}*{\mathrm{head}}
 \cup
-\mathcal{A}*{\mathrm{mid}}
+\mathcal{A}*{\mathrm{middle}}
 \cup
 \mathcal{A}_{\mathrm{tail}}.
-]
+$$
 
-Segment-specific performance is
+A popularity-only scoring mechanism would behave approximately as
 
-[
-M_s
-===
-
-M
-\left(
-\mathcal{A}_s
-\right),
-\qquad
-s\in
-{
-\mathrm{head},
-\mathrm{mid},
-\mathrm{tail}
-}.
-]
-
-This analysis tests whether the learned scoring function merely reproduces popularity:
-
-[
+$$
 s_{ij}
 \propto
-\pi(a_j),
-]
+\pi(a_j).
+$$
 
-or whether it recovers structural relevance beyond global frequency:
+A relational scoring mechanism instead has the form
 
-[
+$$
 s_{ij}
 ======
 
-f_{\theta}
+f_\theta
 \left(
 u_i,
 a_j,
 \mathcal{H}
 \right).
-]
+$$
 
-A structurally meaningful model should preserve useful performance when
-
-[
-\pi(a_j)
-\downarrow,
-]
-
-particularly in the long-tail regime.
+The popularity-segment analysis tests whether the model learns only global item frequency or preserves useful structural information for less frequent items.
 
 ---
 
-## 11. Architectural Summary
+## 12. Architectural Comparison
 
-### Hypergraph Neural Network
+### HGNN
 
-[
+$$
 \mathbf{X}^{(\ell+1)}
 =====================
 
@@ -1014,82 +1015,75 @@ particularly in the long-tail regime.
 \mathbf{H}
 \mathbf{W}
 \mathbf{D}_e^{-1}
-\mathbf{H}^{\top}
+\mathbf{H}^{\mathsf{T}}
 \mathbf{D}_v^{-1/2}
 \mathbf{X}^{(\ell)}
 \mathbf{\Theta}^{(\ell)}
 \right).
-]
+$$
 
 Primary inductive bias:
 
-[
-\text{multi-entity incidence}.
-]
+$$
+\text{explicit multi-entity incidence}.
+$$
 
 ### Transformer
 
-[
+$$
 \mathbf{Z}
 ==========
 
-\operatorname{softmax}
+\mathrm{softmax}
 \left(
 \frac{
-\mathbf{Q}\mathbf{K}^{\top}
+\mathbf{Q}\mathbf{K}^{\mathsf{T}}
 }{
 \sqrt{d_k}
 }
 \right)
 \mathbf{V}.
-]
+$$
 
 Primary inductive bias:
 
-[
+$$
 \text{learned pairwise contextual dependence}.
-]
+$$
 
-### Benchmark Contrast
+The comparison can therefore be summarised as
 
-[
-\boxed{
-\mathcal{H}
-===========
+$$
+\mathcal{H}=(\mathcal{V},\mathcal{E})
+$$
 
-(\mathcal{V},\mathcal{E})
-}
-\qquad
-\text{versus}
-\qquad
-\boxed{
-\mathbf{Q}\mathbf{K}^{\top}
-}.
-]
+versus
+
+$$
+\mathbf{Q}\mathbf{K}^{\mathsf{T}}.
+$$
 
 Equivalently,
 
-[
-\boxed{
+$$
 \text{explicit relational order}
-}
-\qquad
-\text{versus}
-\qquad
-\boxed{
-\text{implicit relational approximation}
-}.
-]
+$$
+
+versus
+
+$$
+\text{implicit relational approximation}.
+$$
 
 ---
 
-## 12. Relevance to Structured AI and Cybersecurity
+## 13. Relevance to Structured AI and Cybersecurity
 
-Although evaluated on recommendation data, the mathematical architecture is domain-independent.
+The mathematical architecture is not specific to recommendation data.
 
-A cybersecurity hyperedge may represent
+A cybersecurity hyperedge could be defined as
 
-[
+$$
 e_{\mathrm{attack}}
 ===================
 
@@ -1102,78 +1096,95 @@ e_{\mathrm{attack}}
 \text{resource},
 \text{time window}
 }.
-]
+$$
 
-The malicious pattern may exist only at the level of the complete relation:
+Each entity may appear individually benign, while the complete joint configuration is anomalous.
 
-[
-\operatorname{Risk}
+This can be expressed as
+
+$$
+\mathrm{Risk}
 \left(
 e_{\mathrm{attack}}
 \right)
-\gg
+
+>
+
 \sum_{v\in e_{\mathrm{attack}}}
-\operatorname{Risk}(v).
-]
+\mathrm{Risk}(v).
+$$
 
-This occurs when individual entities appear benign but their joint configuration is anomalous.
+The higher-order relation therefore contains information not visible from isolated entity scores.
 
-The same incidence-based machinery can therefore support detection of:
+The same incidence-based learning architecture can support:
 
-* coordinated account behaviour;
-* shared malicious infrastructure;
-* campaign-level activity;
-* multi-stage attack chains;
-* distributed fraud;
-* identity-device-resource collusion;
-* higher-order agent state;
-* relational context for autonomous security systems.
+* coordinated-account detection;
+* shared-infrastructure analysis;
+* campaign-level behaviour discovery;
+* multi-stage attack modelling;
+* identity-device-resource correlation;
+* distributed fraud detection;
+* structured state representations for autonomous agents.
 
-The general transfer is
+The domain transfer is
 
-[
+$$
 \text{news bundle}
-\longrightarrow
-\text{entity bundle}
-\longrightarrow
+\rightarrow
+\text{multi-entity behavioural bundle}
+\rightarrow
 \text{coordinated security event}.
-]
+$$
 
-Thus, the project demonstrates a broader structured-intelligence principle:
+The general principle is:
 
-[
-\boxed{
-\text{Do not collapse a higher-order event into isolated pairwise observations}
-}
-]
+$$
+\text{Do not reduce a higher-order event to isolated pairwise observations}
+$$
 
-when the interaction itself carries the relevant information.
+when the complete interaction carries the predictive information.
 
 ---
 
-## 13. Reproducibility
+## 14. Reproducibility
 
-The project is designed around:
+A controlled benchmark requires both models to use the same dataset partitions:
 
-[
-\text{fixed data preparation}
-+
-\text{controlled model comparison}
-+
-\text{consistent evaluation}.
-]
+$$
+\mathcal{D}_{\mathrm{train}}^{\mathrm{HGNN}}
+============================================
 
-For seed (s), model parameters are initialised as
+\mathcal{D}_{\mathrm{train}}^{\mathrm{Transformer}},
+$$
 
-[
-\theta_0
-\sim
-p(\theta\mid s).
-]
+$$
+\mathcal{D}_{\mathrm{validation}}^{\mathrm{HGNN}}
+=================================================
 
-A reproducible experiment requires
+\mathcal{D}_{\mathrm{validation}}^{\mathrm{Transformer}},
+$$
 
-[
+and
+
+$$
+\mathcal{D}_{\mathrm{test}}^{\mathrm{HGNN}}
+===========================================
+
+\mathcal{D}_{\mathrm{test}}^{\mathrm{Transformer}}.
+$$
+
+The models must also use the same evaluation function:
+
+$$
+\mathcal{M}_{\mathrm{eval}}^{\mathrm{HGNN}}
+===========================================
+
+\mathcal{M}_{\mathrm{eval}}^{\mathrm{Transformer}}.
+$$
+
+For a fixed random seed $s$,
+
+$$
 s_{\mathrm{Python}}
 ===================
 
@@ -1182,63 +1193,31 @@ s_{\mathrm{Python}}
 # s_{\mathrm{PyTorch}}
 
 s.
-]
+$$
 
-The comparison is meaningful only when both systems use the same:
+The implementation is designed around:
 
-* training partition;
-* validation partition;
-* test partition;
-* candidate-generation procedure;
-* feature space;
-* evaluation definitions;
-* randomisation controls;
-* stopping criteria.
-
-Formally,
-
-[
-\mathcal{D}_{\mathrm{train}}^{\mathrm{HGNN}}
-============================================
-
-\mathcal{D}_{\mathrm{train}}^{\mathrm{Transformer}},
-]
-
-[
-\mathcal{D}_{\mathrm{test}}^{\mathrm{HGNN}}
-===========================================
-
-\mathcal{D}_{\mathrm{test}}^{\mathrm{Transformer}},
-]
-
-and
-
-[
-\mathcal{M}_{\mathrm{eval}}^{\mathrm{HGNN}}
-===========================================
-
-\mathcal{M}_{\mathrm{eval}}^{\mathrm{Transformer}}.
-]
+* deterministic data preparation;
+* controlled model comparison;
+* fixed evaluation definitions;
+* explicit artefact generation;
+* minimal external dependencies.
 
 ---
 
-## 14. Environment
-
-The benchmark was developed using:
+## 15. Environment
 
 * Python 3.10.11
 * PyTorch 2.1.0
 * CUDA 12.4, optional
 * Windows-native execution
-* no Docker dependency
-* no WSL dependency
-* no Linux dependency
-
-The CPU execution path remains available when CUDA is absent.
+* no Docker requirement
+* no WSL requirement
+* CPU-compatible execution path
 
 ---
 
-## 15. Installation
+## 16. Installation
 
 Clone the repository:
 
@@ -1253,19 +1232,19 @@ Create a virtual environment:
 python -m venv .venv
 ```
 
-Activate it on Windows:
+Activate the environment on Windows:
 
 ```bash
 .venv\Scripts\activate
 ```
 
-Install the project dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Verify the PyTorch installation:
+Verify PyTorch and CUDA availability:
 
 ```bash
 python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
@@ -1273,136 +1252,115 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 
 ---
 
-## 16. Dataset
+## 17. Dataset
 
-The benchmark uses the Microsoft News Dataset, MIND-Small:
+The project uses the [MIND-Small dataset](https://msnews.github.io/).
 
-[MIND: Microsoft News Dataset](https://msnews.github.io/)
+Let the raw interaction dataset be
 
-Let the raw dataset be
-
-[
+$$
 \mathcal{D}
 ===========
 
 {
 (u_i,\mathcal{I}_i,\mathcal{C}*i,y_i)
 }*{i=1}^{N},
-]
+$$
 
 where:
 
-* (u_i) denotes a user;
-* (\mathcal{I}_i) denotes interaction history;
-* (\mathcal{C}_i) denotes candidate items;
-* (y_i) denotes observed relevance labels.
+* $u_i$ is a user;
+* $\mathcal{I}_i$ is the interaction history;
+* $\mathcal{C}_i$ is the candidate-item set;
+* $y_i$ is the relevance label.
 
-The processed dataset induces a hypergraph
+The preprocessing pipeline constructs a hypergraph:
 
-[
+$$
 \mathcal{D}
-\longmapsto
+\rightarrow
 \mathcal{H}
 ===========
 
 (\mathcal{V},\mathcal{E},\mathbf{X}).
-]
+$$
 
-The dataset is not redistributed by this repository. Download and use it in accordance with the original dataset terms.
+The dataset is not redistributed in this repository. Download it from the official MIND website and follow its original licence and usage conditions.
 
 ---
 
-## 17. Research Contribution
+## 18. Research Contribution
 
-This repository contributes an empirical test of the proposition
+The project tests whether directly represented higher-order relations provide a stronger inductive bias than pairwise attention for bundle-sensitive ranking.
 
-[
-\mathfrak{R}*{>2}
-\not\subseteq
-\mathfrak{R}*{2},
-]
+The primary hypothesis is
 
-where:
-
-* (\mathfrak{R}_{>2}) denotes directly represented higher-order relations;
-* (\mathfrak{R}_{2}) denotes structures represented through pairwise interactions.
-
-The practical hypothesis is
-
-[
-\mathcal{H}*{1}:
-\quad
-M
-\left(
-f*{\mathrm{HGNN}}
-\right)
+$$
+M(f_{\mathrm{HGNN}})
 
 >
 
-M
-\left(
-f_{\mathrm{Transformer}}
-\right)
-]
+M(f_{\mathrm{Transformer}})
+$$
 
-for bundle-sensitive ranking metrics
+for
 
-[
+$$
 M
 \in
 {
-\operatorname{HR@10},
-\operatorname{NDCG@10}
+\mathrm{HR@10},
+\mathrm{NDCG@10}
 }.
-]
+$$
 
-The reported results satisfy
+The observed results satisfy both inequalities:
 
-[
-M
-\left(
-f_{\mathrm{HGNN}}
-\right)
+$$
+\mathrm{HR@10}(f_{\mathrm{HGNN}})
 
 >
 
-M
-\left(
-f_{\mathrm{Transformer}}
-\right)
-]
+\mathrm{HR@10}(f_{\mathrm{Transformer}})
+$$
 
-for both primary ranking metrics.
+and
 
-The project therefore provides experimental evidence that:
+$$
+\mathrm{NDCG@10}(f_{\mathrm{HGNN}})
 
-[
-\boxed{
-\text{Representational geometry matters independently of model scale.}
-}
-]
+>
 
-A comparatively compact architecture can outperform a more general sequence model when its structural assumptions more accurately reflect the data-generating process.
+\mathrm{NDCG@10}(f_{\mathrm{Transformer}}).
+$$
+
+The project therefore provides evidence for the principle
+
+$$
+\text{representational structure matters independently of model generality}.
+$$
+
+A structurally specialised model can outperform a more general sequence architecture when its mathematical representation more closely matches the data-generating process.
 
 ---
 
-## 18. Limitations
+## 19. Limitations
 
-The results should be interpreted within the scope of the implemented benchmark.
+The results do not prove that
 
-They do not establish
-
-[
+$$
 f_{\mathrm{HGNN}}
-\succ
+
+>
+
 f_{\mathrm{Transformer}}
-]
+$$
 
-for every dataset, architecture, or hyperparameter regime.
+for every dataset, architecture, or hyperparameter configuration.
 
-Performance depends on:
+Observed performance depends on
 
-[
+$$
 M
 =
 
@@ -1415,45 +1373,44 @@ F
 \mathcal{S},
 \mathcal{B}
 \right),
-]
+$$
 
 where:
 
-* (\mathcal{D}) is the dataset;
-* (\mathcal{H}) is the structural construction;
-* (\theta) is the parameterisation;
-* (\Omega) is the optimisation procedure;
-* (\mathcal{S}) is the sampling strategy;
-* (\mathcal{B}) is the baseline configuration.
+* $\mathcal{D}$ is the dataset;
+* $\mathcal{H}$ is the hypergraph construction;
+* $\theta$ is the model parameterisation;
+* $\Omega$ is the optimisation procedure;
+* $\mathcal{S}$ is the sampling strategy;
+* $\mathcal{B}$ is the baseline configuration.
 
-The correct conclusion is therefore benchmark-specific:
+The correct conclusion is limited to the implemented experiment:
 
-[
-\boxed{
-\text{Under the controlled experimental setup, the HGNN recovered}
-}
-]
+$$
+\text{HGNN}
 
-[
-\boxed{
-\text{bundle-sensitive structure substantially better than the Transformer baseline.}
-}
-]
+>
+
+\text{selected Transformer baseline}
+$$
+
+for the reported bundle-discovery metrics under the controlled benchmark configuration.
 
 ---
 
-## 19. Author
+## 20. Author
 
 **Harshwardhan Singh**
 
-Mathematical AI researcher working on:
+Mathematical AI researcher working across:
 
 * graph and hypergraph learning;
 * topological feature extraction;
 * spectral optimisation;
 * quantum-encoded machine learning;
-* structured representations for autonomous decision systems;
-* mathematical intelligence layers for cybersecurity agents.
+* structured representations;
+* autonomous decision systems;
+* mathematical intelligence layers for cybersecurity.
 
 GitHub: [github.com/Hars15kth](https://github.com/Hars15kth)
 
@@ -1461,47 +1418,42 @@ LinkedIn: [linkedin.com/in/harshwardhan-singh-2b1453318](https://linkedin.com/in
 
 ---
 
-## 20. Core Result
+## Core Result
 
-[
-\boxed{
-\begin{aligned}
-\operatorname{HR@10}_{\mathrm{HGNN}}
-&=
+$$
+\mathrm{HR@10}_{\mathrm{HGNN}}
+==============================
+
 0.842
 
 >
 
 # 0.611
 
-\operatorname{HR@10}*{\mathrm{Transformer}},
-[4pt]
-\operatorname{NDCG@10}*{\mathrm{HGNN}}
-&=
+\mathrm{HR@10}_{\mathrm{Transformer}}.
+$$
+
+$$
+\mathrm{NDCG@10}_{\mathrm{HGNN}}
+================================
+
 0.791
 
 >
 
 # 0.574
 
-\operatorname{NDCG@10}_{\mathrm{Transformer}}.
-\end{aligned}
-}
-]
+\mathrm{NDCG@10}_{\mathrm{Transformer}}.
+$$
 
-Therefore,
+Therefore, for this benchmark,
 
-[
-\boxed{
+$$
 \text{explicit higher-order structure}
-\quad
 
 >
 
-\quad
-\text{pairwise attention baseline}
-}
-]
+\text{pairwise-attention baseline}.
+$$
 
-for the bundle-discovery task evaluated in this repository.
 
