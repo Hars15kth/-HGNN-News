@@ -125,7 +125,7 @@ Its entries are defined by
 
 
 $$H_{ve}$$
-
+=
 $$ \begin{cases}
 1, & \text{when } v\in e, \
 0, & \text{when } v\notin e.
@@ -137,39 +137,35 @@ An adjacency matrix records whether two vertices are connected. The incidence ma
 
 Let the hyperedge-weight matrix be
 
-$$
-\mathbf{W}
+$$\mathbf{W}$$
 ==========
-
+$$
 \mathrm{diag}(w_1,w_2,\ldots,w_{|\mathcal{E}|}).
 $$
 
 The degree of a vertex $v$ is
 
-$$
-d(v)
+$$ d(v) $$
 ====
-
+$$
 \sum_{e\in\mathcal{E}}
 w_e H_{ve}.
 $$
 
 The degree of a hyperedge $e$ is
 
-$$
-\delta(e)
+$$\delta(e)$$
 =========
-
+$$
 \sum_{v\in\mathcal{V}}
 H_{ve}.
 $$
 
 The corresponding degree matrices are
 
-$$
-\mathbf{D}_v
+$$\mathbf{D}_v$$
 ============
-
+$$
 \mathrm{diag}
 \bigl(
 d(v_1),d(v_2),\ldots,d(v_{|\mathcal{V}|})
@@ -178,10 +174,9 @@ $$
 
 and
 
-$$
-\mathbf{D}_e
+$$\mathbf{D}_e$$
 ============
-
+$$
 \mathrm{diag}
 \bigl(
 \delta(e_1),\delta(e_2),\ldots,\delta(e_{|\mathcal{E}|})
@@ -194,10 +189,9 @@ $$
 
 The normalised hypergraph propagation operator is
 
-$$
-\mathbf{P}_{\mathcal{H}}
+$$\mathbf{P}_{\mathcal{H}}$$
 ========================
-
+$$
 \mathbf{D}_v^{-1/2}
 \mathbf{H}
 \mathbf{W}
@@ -218,10 +212,9 @@ be the initial entity-feature matrix.
 
 A hypergraph neural layer is defined by
 
-$$
-\mathbf{X}^{(\ell+1)}
+$$\mathbf{X}^{(\ell+1)}$$
 =====================
-
+$$
 \sigma
 \left(
 \mathbf{P}_{\mathcal{H}}
@@ -241,8 +234,7 @@ Here:
 
 For the first layer,
 
-$$
-\mathbf{X}^{(1)}
+$$\mathbf{X}^{(1)}$$
 ================
 
 \mathrm{ReLU}
@@ -257,10 +249,9 @@ $$
 
 For the second layer,
 
-$$
-\mathbf{Z}_{\mathcal{H}}
+$$\mathbf{Z}_{\mathcal{H}}$$
 ========================
-
+$$
 \mathbf{P}_{\mathcal{H}}
 \mathbf{X}^{(1)}
 \mathbf{\Theta}^{(1)}
@@ -307,32 +298,29 @@ This allows information to propagate through a complete multi-entity relation wi
 
 The normalised hypergraph Laplacian is
 
-$$
-\mathbf{L}_{\mathcal{H}}
+$$\mathbf{L}_{\mathcal{H}}$$
 ========================
 
 ## \mathbf{I}
-
+$$
 \mathbf{P}_{\mathcal{H}}.
 $$
 
 Equivalently,
 
-$$
-\mathbf{P}_{\mathcal{H}}
+$$\mathbf{P}_{\mathcal{H}}$$
 ========================
 
 ## \mathbf{I}
-
+$$
 \mathbf{L}_{\mathcal{H}}.
 $$
 
 For an embedding matrix
 
-$$
-\mathbf{Z}
+$$\mathbf{Z}$$
 ==========
-
+$$
 \begin{bmatrix}
 \mathbf{z}_1^{\mathsf{T}} \
 \mathbf{z}*2^{\mathsf{T}} \
@@ -343,10 +331,9 @@ $$
 
 the hypergraph structural energy is
 
-$$
-\mathcal{E}_{\mathcal{H}}(\mathbf{Z})
+$$\mathcal{E}_{\mathcal{H}}(\mathbf{Z})$$
 =====================================
-
+$$
 \mathrm{Tr}
 \left(
 \mathbf{Z}^{\mathsf{T}}
@@ -374,10 +361,9 @@ The constraint is determined by shared higher-order membership rather than only 
 
 Let an interaction sequence be represented by
 
-$$
-\mathbf{S}
+$$\mathbf{S}$$
 ==========
-
+$$
 \begin{bmatrix}
 \mathbf{s}_1^{\mathsf{T}} \
 \mathbf{s}_2^{\mathsf{T}} \
@@ -390,40 +376,36 @@ $$
 
 The query, key, and value matrices are
 
-$$
-\mathbf{Q}
+$$\mathbf{Q}$$
 ==========
-
+$$
 \mathbf{S}\mathbf{W}_Q,
 $$
 
-$$
-\mathbf{K}
+$$\mathbf{K}$$
 ==========
-
+$$
 \mathbf{S}\mathbf{W}_K,
 $$
 
 and
 
-$$
-\mathbf{V}
+$$\mathbf{V}$$
 ==========
-
+$$
 \mathbf{S}\mathbf{W}_V.
 $$
 
 Scaled dot-product attention is
 
-$$
-\mathrm{Attention}
+$$\mathrm{Attention}
 \left(
 \mathbf{Q},
 \mathbf{K},
 \mathbf{V}
-\right)
+\right)$$
 =======
-
+$$
 \mathrm{softmax}
 \left(
 \frac{
@@ -437,10 +419,9 @@ $$
 
 The attention coefficient between positions $i$ and $j$ is
 
-$$
-\alpha_{ij}
+$$\alpha_{ij}$$
 ===========
-
+$$
 \frac{
 \exp
 \left(
@@ -503,10 +484,9 @@ $$
 
 A pairwise expansion replaces this hyperedge with up to
 
-$$
-\binom{r}{2}
+$$\binom{r}{2}$$
 ============
-
+$$
 \frac{r(r-1)}{2}
 $$
 
@@ -584,20 +564,18 @@ be the learned representation of candidate article $a_j$.
 
 A basic compatibility score is
 
-$$
-s_{ij}
+$$s_{ij}$$
 ======
-
+$$
 \mathbf{z}*{u_i}^{\mathsf{T}}
 \mathbf{z}*{a_j}.
 $$
 
 The corresponding relevance probability is
 
-$$
-\widehat{p}_{ij}
+$$\widehat{p}_{ij}$$
 ================
-
+$$
 \frac{1}{1+\exp(-s_{ij})}.
 $$
 
@@ -609,12 +587,11 @@ $$
 
 the binary cross-entropy loss is
 
-$$
-\mathcal{L}_{\mathrm{BCE}}
+$$\mathcal{L}_{\mathrm{BCE}}$$
 ==========================
 
 *
-
+$$
 \frac{1}{N}
 \sum_{(i,j)}
 \left[
@@ -626,8 +603,7 @@ $$
 
 With quadratic regularisation,
 
-$$
-\mathcal{L}
+$$\mathcal{L}$$
 ===========
 
 \mathcal{L}_{\mathrm{BCE}}
@@ -638,12 +614,11 @@ $$
 
 A pairwise ranking objective may alternatively be written as
 
-$$
-\mathcal{L}_{\mathrm{rank}}
+$$\mathcal{L}_{\mathrm{rank}}$$
 ===========================
 
 *
-
+$$
 \sum_{(i,j,k)}
 \log
 \left[
