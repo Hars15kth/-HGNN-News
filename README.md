@@ -246,7 +246,7 @@ $$\left|\mathbf{z}_i-\mathbf{z}_j\right|_2$$
 
 is constrained by shared higher-order membership.
 
-The smoothness objective can be expressed as
+The smoothness objective is
 
 $$\min_{\mathbf{Z}}\mathcal{E}_{\mathcal{H}}(\mathbf{Z})$$
 
@@ -298,13 +298,13 @@ $$(i,j).$$
 
 Multiple attention layers can approximate complex dependencies, but the elementary interaction remains pairwise.
 
-The mathematical comparison is therefore between the hypergraph operator
+The hypergraph operator is
 
 $$\mathbf{P}_{\mathcal{H}}$$
 
-$$=\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}$$
+$$=\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}.$$
 
-and the attention operator
+The attention operator is
 
 $$\mathbf{A}_{\mathrm{attn}}$$
 
@@ -481,7 +481,7 @@ $$=\frac{\mathrm{TP}+\mathrm{TN}}{\mathrm{TP}+\mathrm{TN}+\mathrm{FP}+\mathrm{FN
 | Accuracy   | **0.900** |               0.650 |
 | Final loss | **0.214** | approximately 0.750 |
 
-For a performance metric $M$ where larger values are preferable, define the relative improvement as
+For a metric $M$ where larger values are preferable, define the relative improvement as
 
 $$\Delta_M$$
 
@@ -913,7 +913,6 @@ Therefore, for this benchmark,
 $$\text{explicit higher-order structure}$$
 
 $$>\text{pairwise-attention baseline}.$$
-
 
 
 
