@@ -2,14 +2,14 @@
 
 A mathematical benchmark comparing a **Hypergraph Neural Network (HGNN)** with a **Transformer** for higher-order bundle discovery on the [MIND-Small](https://msnews.github.io/) dataset.
 
-The project studies whether explicitly representing multi-entity relations through a hypergraph incidence structure produces better ranking performance than learning relations through pairwise self-attention.
+The project investigates whether explicitly representing multi-entity relations through hypergraph incidence geometry produces stronger ranking performance than learning relational structure through pairwise self-attention.
 
 The central hypothesis is:
 
 $$
-\text{explicit higher-order structure}
-\quad \Longrightarrow \quad
-\text{improved bundle discovery}
+\text{Explicit higher-order structure}
+\Longrightarrow
+\text{improved bundle discovery}.
 $$
 
 The benchmark evaluates:
@@ -29,18 +29,30 @@ The benchmark evaluates:
 Let the entity set be
 
 $$
-\mathcal{V} = {v_1,v_2,\ldots,v_n}.
+\mathcal{V}
+$$
+
+# $$
+
+\left{
+v_1,v_2,\ldots,v_n
+\right}.
 $$
 
 The entities may represent users, articles, topics, categories, or interaction states.
 
-A conventional graph encodes pairwise relations:
+A conventional graph encodes pairwise relations through
 
 $$
-\mathcal{E}_2 \subseteq \mathcal{V}\times\mathcal{V}.
+\mathcal{E}_2
 $$
 
-Every relation therefore has the form
+$$
+\subseteq
+\mathcal{V}\times\mathcal{V}.
+$$
+
+Every primitive relation therefore has the form
 
 $$
 (v_i,v_j).
@@ -49,26 +61,45 @@ $$
 A hypergraph is defined as
 
 $$
-\mathcal{H} = (\mathcal{V},\mathcal{E}),
+\mathcal{H}
+$$
+
+# $$
+
+(\mathcal{V},\mathcal{E}),
 $$
 
 where each hyperedge satisfies
 
 $$
-e \subseteq \mathcal{V}.
+e
+$$
+
+$$
+\subseteq
+\mathcal{V}.
 $$
 
 Unlike an ordinary edge, a hyperedge may connect more than two entities:
 
 $$
-|e| \geq 2.
+|e|
 $$
 
-For example, a behavioural bundle may be represented as
+$$
+\geq
+2.
+$$
+
+A behavioural bundle may therefore be represented as
 
 $$
-e_k =
-{
+e_k
+$$
+
+# $$
+
+\left{
 u_i,
 a_{j_1},
 a_{j_2},
@@ -76,7 +107,7 @@ a_{j_2},
 a_{j_m},
 c_r,
 t_s
-},
+\right},
 $$
 
 where:
@@ -89,24 +120,38 @@ where:
 The learning objective is to construct a scoring function
 
 $$
-f_\theta :
+f_\theta
+$$
+
+$$
+:
 \mathcal{U}\times\mathcal{A}
-\rightarrow
-\mathbb{R},
+\longrightarrow
+\mathbb{R}.
 $$
 
-where
+For user $u_i$ and candidate article $a_j$, the predicted compatibility score is
 
 $$
-s_{ij} = f_\theta(u_i,a_j)
+s_{ij}
 $$
 
-is the predicted compatibility between user $u_i$ and candidate article $a_j$.
+# $$
 
-For a relevant candidate $a_j^+$ and a non-relevant candidate $a_k^-$, the desired ordering is
+f_\theta(u_i,a_j).
+$$
+
+For a relevant candidate $a_j^{+}$ and a non-relevant candidate $a_k^{-}$, the desired ordering is
 
 $$
-s_{ij}^+ > s_{ik}^-.
+s_{ij}^{+}
+$$
+
+$$
+
+>
+
+s_{ik}^{-}.
 $$
 
 ---
@@ -117,70 +162,103 @@ The hypergraph is encoded by an incidence matrix
 
 $$
 \mathbf{H}
+$$
+
+$$
 \in
-{0,1}^{|\mathcal{V}|\times|\mathcal{E}|}.
+\left{
+0,1
+\right}^{|\mathcal{V}|\times|\mathcal{E}|}.
 $$
 
 Its entries are defined by
 
+$$
+H_{ve}
+$$
 
-$$H_{ve}$$
-=
-$$ \begin{cases}
-1, & \text{when } v\in e, \
-0, & \text{when } v\notin e.
-\end{cases} $$
+# $$
+
+\begin{cases}
+1, & v\in e,\
+0, & v\notin e.
+\end{cases}
+$$
 
 The incidence matrix preserves the identity of each higher-order relation.
 
-An adjacency matrix records whether two vertices are connected. The incidence matrix instead records which vertices participate in the same multi-entity event.
+An adjacency matrix records whether two vertices are pairwise connected. The incidence matrix instead records which vertices participate in the same multi-entity event.
 
 Let the hyperedge-weight matrix be
 
-$$\mathbf{W}$$
-==========
 $$
-\mathrm{diag}(w_1,w_2,\ldots,w_{|\mathcal{E}|}).
+\mathbf{W}
+$$
+
+# $$
+
+\mathrm{diag}
+\left(
+w_1,w_2,\ldots,w_{|\mathcal{E}|}
+\right).
 $$
 
 The degree of a vertex $v$ is
 
-$$ d(v) $$
-====
 $$
+d(v)
+$$
+
+# $$
+
 \sum_{e\in\mathcal{E}}
 w_e H_{ve}.
 $$
 
 The degree of a hyperedge $e$ is
 
-$$\delta(e)$$
-=========
 $$
+\delta(e)
+$$
+
+# $$
+
 \sum_{v\in\mathcal{V}}
 H_{ve}.
 $$
 
-The corresponding degree matrices are
+The vertex-degree matrix is
 
-$$\mathbf{D}_v$$
-============
 $$
+\mathbf{D}_v
+$$
+
+# $$
+
 \mathrm{diag}
-\bigl(
-d(v_1),d(v_2),\ldots,d(v_{|\mathcal{V}|})
-\bigr)
+\left(
+d(v_1),
+d(v_2),
+\ldots,
+d(v_{|\mathcal{V}|})
+\right).
 $$
 
-and
+The hyperedge-degree matrix is
 
-$$\mathbf{D}_e$$
-============
 $$
+\mathbf{D}_e
+$$
+
+# $$
+
 \mathrm{diag}
-\bigl(
-\delta(e_1),\delta(e_2),\ldots,\delta(e_{|\mathcal{E}|})
-\bigr).
+\left(
+\delta(e_1),
+\delta(e_2),
+\ldots,
+\delta(e_{|\mathcal{E}|})
+\right).
 $$
 
 ---
@@ -189,9 +267,12 @@ $$
 
 The normalised hypergraph propagation operator is
 
-$$\mathbf{P}_{\mathcal{H}}$$
-========================
 $$
+\mathbf{P}_{\mathcal{H}}
+$$
+
+# $$
+
 \mathbf{D}_v^{-1/2}
 \mathbf{H}
 \mathbf{W}
@@ -200,21 +281,25 @@ $$
 \mathbf{D}_v^{-1/2}.
 $$
 
-Let
+Let the initial entity-feature matrix be
 
 $$
 \mathbf{X}^{(0)}
+$$
+
+$$
 \in
-\mathbb{R}^{|\mathcal{V}|\times d_0}
+\mathbb{R}^{|\mathcal{V}|\times d_0}.
 $$
 
-be the initial entity-feature matrix.
+A general hypergraph neural layer is defined by
 
-A hypergraph neural layer is defined by
-
-$$\mathbf{X}^{(\ell+1)}$$
-=====================
 $$
+\mathbf{X}^{(\ell+1)}
+$$
+
+# $$
+
 \sigma
 \left(
 \mathbf{P}_{\mathcal{H}}
@@ -234,8 +319,11 @@ Here:
 
 For the first layer,
 
-$$\mathbf{X}^{(1)}$$
-================
+$$
+\mathbf{X}^{(1)}
+$$
+
+# $$
 
 \mathrm{ReLU}
 \left(
@@ -249,9 +337,12 @@ $$
 
 For the second layer,
 
-$$\mathbf{Z}_{\mathcal{H}}$$
-========================
 $$
+\mathbf{Z}_{\mathcal{H}}
+$$
+
+# $$
+
 \mathbf{P}_{\mathcal{H}}
 \mathbf{X}^{(1)}
 \mathbf{\Theta}^{(1)}
@@ -259,38 +350,62 @@ $$
 \mathbf{b}^{(1)}.
 $$
 
-The propagation process is therefore
+The propagation process is
 
 $$
 \text{vertex}
-\rightarrow
+\longrightarrow
 \text{hyperedge}
-\rightarrow
+\longrightarrow
 \text{vertex}.
 $$
 
-The term
+The vertex-to-hyperedge aggregation term is
 
 $$
+\mathbf{X}_{\mathcal{E}}^{(\ell)}
+$$
+
+# $$
+
+\mathbf{D}_e^{-1}
 \mathbf{H}^{\mathsf{T}}
 \mathbf{D}_v^{-1/2}
-\mathbf{X}^{(\ell)}
+\mathbf{X}^{(\ell)}.
 $$
 
-aggregates vertex information into hyperedge representations.
-
-The term
+The hyperedge-to-vertex propagation term is
 
 $$
+\mathbf{X}_{\mathcal{V}}^{(\ell+1)}
+$$
+
+# $$
+
+\mathbf{D}*v^{-1/2}
+\mathbf{H}
+\mathbf{W}
+\mathbf{X}*{\mathcal{E}}^{(\ell)}.
+$$
+
+Combining the two stages gives
+
+$$
+\mathbf{X}_{\mathcal{V}}^{(\ell+1)}
+$$
+
+# $$
+
 \mathbf{D}_v^{-1/2}
 \mathbf{H}
 \mathbf{W}
 \mathbf{D}_e^{-1}
+\mathbf{H}^{\mathsf{T}}
+\mathbf{D}_v^{-1/2}
+\mathbf{X}^{(\ell)}.
 $$
 
-then distributes the hyperedge information back to participating vertices.
-
-This allows information to propagate through a complete multi-entity relation without first decomposing it into independent pairs.
+This allows information to propagate through a complete multi-entity relation without decomposing that relation into independent pairs.
 
 ---
 
@@ -298,42 +413,54 @@ This allows information to propagate through a complete multi-entity relation wi
 
 The normalised hypergraph Laplacian is
 
-$$\mathbf{L}_{\mathcal{H}}$$
-========================
+$$
+\mathbf{L}_{\mathcal{H}}
+$$
+
+# $$
 
 ## \mathbf{I}
-$$
+
 \mathbf{P}_{\mathcal{H}}.
 $$
 
 Equivalently,
 
-$$\mathbf{P}_{\mathcal{H}}$$
-========================
+$$
+\mathbf{P}_{\mathcal{H}}
+$$
+
+# $$
 
 ## \mathbf{I}
-$$
+
 \mathbf{L}_{\mathcal{H}}.
 $$
 
-For an embedding matrix
+For an embedding matrix,
 
-$$\mathbf{Z}$$
-==========
 $$
+\mathbf{Z}
+$$
+
+# $$
+
 \begin{bmatrix}
-\mathbf{z}_1^{\mathsf{T}} \
-\mathbf{z}*2^{\mathsf{T}} \
-\vdots \
+\mathbf{z}_1^{\mathsf{T}}\
+\mathbf{z}*2^{\mathsf{T}}\
+\vdots\
 \mathbf{z}*{|\mathcal{V}|}^{\mathsf{T}}
 \end{bmatrix},
 $$
 
 the hypergraph structural energy is
 
-$$\mathcal{E}_{\mathcal{H}}(\mathbf{Z})$$
-=====================================
 $$
+\mathcal{E}_{\mathcal{H}}(\mathbf{Z})
+$$
+
+# $$
+
 \mathrm{Tr}
 \left(
 \mathbf{Z}^{\mathsf{T}}
@@ -342,18 +469,46 @@ $$
 \right).
 $$
 
-A low value of this energy encourages entities participating in the same hyperedge to obtain compatible representations.
+A low structural energy encourages entities participating in the same hyperedge to acquire compatible representations.
 
-Thus,
+Thus, when
 
 $$
-v_i,v_j\in e
-\quad \Longrightarrow \quad
-|\mathbf{z}_i-\mathbf{z}_j|_2
-\text{ is structurally constrained}.
+v_i,v_j
 $$
 
-The constraint is determined by shared higher-order membership rather than only pairwise adjacency.
+$$
+\in
+e,
+$$
+
+the embedding distance
+
+$$
+\left|
+\mathbf{z}_i-\mathbf{z}_j
+\right|_2
+$$
+
+is constrained by shared higher-order membership.
+
+The smoothness objective can be expressed as
+
+$$
+\min_{\mathbf{Z}}
+\mathcal{E}_{\mathcal{H}}(\mathbf{Z})
+$$
+
+# $$
+
+\min_{\mathbf{Z}}
+\mathrm{Tr}
+\left(
+\mathbf{Z}^{\mathsf{T}}
+\mathbf{L}_{\mathcal{H}}
+\mathbf{Z}
+\right).
+$$
 
 ---
 
@@ -361,51 +516,68 @@ The constraint is determined by shared higher-order membership rather than only 
 
 Let an interaction sequence be represented by
 
-$$\mathbf{S}$$
-==========
 $$
+\mathbf{S}
+$$
+
+# $$
+
 \begin{bmatrix}
-\mathbf{s}_1^{\mathsf{T}} \
-\mathbf{s}_2^{\mathsf{T}} \
-\vdots \
+\mathbf{s}_1^{\mathsf{T}}\
+\mathbf{s}_2^{\mathsf{T}}\
+\vdots\
 \mathbf{s}_m^{\mathsf{T}}
 \end{bmatrix}
 \in
 \mathbb{R}^{m\times d}.
 $$
 
-The query, key, and value matrices are
+The query matrix is
 
-$$\mathbf{Q}$$
-==========
 $$
-\mathbf{S}\mathbf{W}_Q,
+\mathbf{Q}
 $$
 
-$$\mathbf{K}$$
-==========
-$$
-\mathbf{S}\mathbf{W}_K,
+# $$
+
+\mathbf{S}\mathbf{W}_Q.
 $$
 
-and
+The key matrix is
 
-$$\mathbf{V}$$
-==========
 $$
+\mathbf{K}
+$$
+
+# $$
+
+\mathbf{S}\mathbf{W}_K.
+$$
+
+The value matrix is
+
+$$
+\mathbf{V}
+$$
+
+# $$
+
 \mathbf{S}\mathbf{W}_V.
 $$
 
 Scaled dot-product attention is
 
-$$\mathrm{Attention}
+$$
+\mathrm{Attention}
 \left(
 \mathbf{Q},
 \mathbf{K},
 \mathbf{V}
-\right)$$
-=======
+\right)
 $$
+
+# $$
+
 \mathrm{softmax}
 \left(
 \frac{
@@ -419,34 +591,49 @@ $$
 
 The attention coefficient between positions $i$ and $j$ is
 
-$$\alpha_{ij}$$
-===========
 $$
+\alpha_{ij}
+$$
+
+# $$
+
 \frac{
 \exp
 \left(
-\mathbf{q}_i^{\mathsf{T}}\mathbf{k}*j/\sqrt{d_k}
+\mathbf{q}_i^{\mathsf{T}}
+\mathbf{k}*j
+/
+\sqrt{d_k}
 \right)
 }{
+\displaystyle
 \sum*{r=1}^{m}
 \exp
 \left(
-\mathbf{q}_i^{\mathsf{T}}\mathbf{k}_r/\sqrt{d_k}
+\mathbf{q}_i^{\mathsf{T}}
+\mathbf{k}_r
+/
+\sqrt{d_k}
 \right)
 }.
 $$
 
-Each primitive attention coefficient therefore represents a pairwise relation:
+Each primitive attention coefficient represents a pairwise relation:
 
 $$
 (i,j).
 $$
 
-Multiple attention layers may learn complex contextual dependencies, but their elementary interaction remains pairwise.
+Multiple attention layers can approximate complex dependencies, but the elementary interaction remains pairwise.
 
-The mathematical comparison is therefore
+The mathematical comparison is therefore between the hypergraph operator
 
 $$
+\mathbf{P}_{\mathcal{H}}
+$$
+
+# $$
+
 \mathbf{D}_v^{-1/2}
 \mathbf{H}
 \mathbf{W}
@@ -455,9 +642,14 @@ $$
 \mathbf{D}_v^{-1/2}
 $$
 
-versus
+and the attention operator
 
 $$
+\mathbf{A}_{\mathrm{attn}}
+$$
+
+# $$
+
 \mathrm{softmax}
 \left(
 \frac{
@@ -468,9 +660,7 @@ $$
 \right).
 $$
 
-The first operator begins from explicit higher-order incidence structure.
-
-The second learns pairwise contextual weights from the input sequence.
+The first begins with explicit higher-order incidence structure. The second learns pairwise contextual weights from the input sequence.
 
 ---
 
@@ -479,53 +669,93 @@ The second learns pairwise contextual weights from the input sequence.
 Consider a hyperedge containing $r$ entities:
 
 $$
-e = {v_1,v_2,\ldots,v_r}.
+e
+$$
+
+# $$
+
+\left{
+v_1,v_2,\ldots,v_r
+\right}.
 $$
 
 A pairwise expansion replaces this hyperedge with up to
 
-$$\binom{r}{2}$$
-============
 $$
+\binom{r}{2}
+$$
+
+# $$
+
 \frac{r(r-1)}{2}
 $$
 
 ordinary edges.
 
-However,
+However, as relational objects,
 
 $$
 e
-\neq
-\bigcup_{1\leq i<j\leq r}
-(v_i,v_j)
 $$
 
-as relational objects.
+$$
+\neq
+\bigcup_{1\leq i<j\leq r}
+\left{
+(v_i,v_j)
+\right}.
+$$
 
 The pairwise expansion records that individual pairs are connected, but it does not necessarily preserve the fact that all $r$ entities participated in one common event.
 
-For example, the bundle
+For example, consider the bundle
 
 $$
-{
+e_{\mathrm{bundle}}
+$$
+
+# $$
+
+\left{
 \text{user},
 \text{article},
 \text{topic},
 \text{session},
 \text{time}
-}
+\right}.
 $$
 
-contains a joint relation that is not identical to the set
+Its pairwise projection is
 
 $$
-{
+\Pi_2
+\left(
+e_{\mathrm{bundle}}
+\right)
+$$
+
+# $$
+
+\left{
 (\text{user},\text{article}),
 (\text{user},\text{topic}),
 (\text{article},\text{topic}),
 \ldots
-}.
+\right}.
+$$
+
+In general,
+
+$$
+e_{\mathrm{bundle}}
+$$
+
+$$
+\not\equiv
+\Pi_2
+\left(
+e_{\mathrm{bundle}}
+\right).
 $$
 
 The HGNN preserves the factorisation
@@ -544,88 +774,132 @@ This gives the model an explicit inductive bias for recovering multi-entity stru
 
 ## 7. Prediction Function
 
-Let
+Let the learned user representation be
 
 $$
 \mathbf{z}_{u_i}
-\in
-\mathbb{R}^{d}
 $$
 
-be the learned representation of user $u_i$, and let
+$$
+\in
+\mathbb{R}^{d}.
+$$
+
+Let the learned candidate representation be
 
 $$
 \mathbf{z}_{a_j}
-\in
-\mathbb{R}^{d}
 $$
 
-be the learned representation of candidate article $a_j$.
+$$
+\in
+\mathbb{R}^{d}.
+$$
 
 A basic compatibility score is
 
-$$s_{ij}$$
-======
 $$
+s_{ij}
+$$
+
+# $$
+
 \mathbf{z}*{u_i}^{\mathsf{T}}
 \mathbf{z}*{a_j}.
 $$
 
 The corresponding relevance probability is
 
-$$\widehat{p}_{ij}$$
-================
 $$
-\frac{1}{1+\exp(-s_{ij})}.
+\widehat{p}_{ij}
 $$
 
-For binary labels
+# $$
+
+\frac{
+1
+}{
+1+\exp(-s_{ij})
+}.
+$$
+
+For binary relevance labels,
 
 $$
-y_{ij}\in{0,1},
+y_{ij}
+$$
+
+$$
+\in
+\left{
+0,1
+\right},
 $$
 
 the binary cross-entropy loss is
 
-$$\mathcal{L}_{\mathrm{BCE}}$$
-==========================
+$$
+\mathcal{L}_{\mathrm{BCE}}
+$$
+
+# $$
 
 *
-$$
+
 \frac{1}{N}
 \sum_{(i,j)}
 \left[
 y_{ij}\log(\widehat{p}*{ij})
 +
-(1-y*{ij})\log(1-\widehat{p}_{ij})
+(1-y*{ij})
+\log
+\left(
+1-\widehat{p}_{ij}
+\right)
 \right].
 $$
 
-With quadratic regularisation,
+With quadratic regularisation, the total objective is
 
-$$\mathcal{L}$$
-===========
+$$
+\mathcal{L}
+$$
+
+# $$
 
 \mathcal{L}_{\mathrm{BCE}}
 +
 \lambda
-|\theta|_2^2.
+\left|
+\theta
+\right|_2^2.
 $$
 
 A pairwise ranking objective may alternatively be written as
 
-$$\mathcal{L}_{\mathrm{rank}}$$
-===========================
+$$
+\mathcal{L}_{\mathrm{rank}}
+$$
+
+# $$
 
 *
-$$
+
 \sum_{(i,j,k)}
 \log
 \left[
 \frac{
 1
 }{
-1+\exp\left(-(s_{ij}^{+}-s_{ik}^{-})\right)
+1+
+\exp
+\left(
+------
+
+\left(
+s_{ij}^{+}-s_{ik}^{-}
+\right)
+\right)
 }
 \right].
 $$
@@ -638,22 +912,24 @@ $$
 
 Let $\mathcal{R}_i$ be the relevant-item set for user $u_i$, and let $\widehat{\mathcal{R}}_i^{(10)}$ be the ten highest-ranked predictions.
 
-Then
+The Hit Rate at 10 is
 
 $$
 \mathrm{HR@10}
-==============
+$$
+
+# $$
 
 \frac{1}{N}
 \sum_{i=1}^{N}
 \mathbf{1}
-\left(
+\left[
 \mathcal{R}_i
 \cap
 \widehat{\mathcal{R}}_i^{(10)}
 \neq
 \varnothing
-\right).
+\right].
 $$
 
 ### Discounted Cumulative Gain
@@ -662,7 +938,9 @@ For user $u_i$,
 
 $$
 \mathrm{DCG@10}_i
-=================
+$$
+
+# $$
 
 \sum_{r=1}^{10}
 \frac{
@@ -674,9 +952,13 @@ $$
 
 ### Normalised Discounted Cumulative Gain
 
+For user $u_i$,
+
 $$
 \mathrm{NDCG@10}_i
-==================
+$$
+
+# $$
 
 \frac{
 \mathrm{DCG@10}_i
@@ -685,11 +967,13 @@ $$
 }.
 $$
 
-The mean score is
+The mean NDCG is
 
 $$
 \mathrm{NDCG@10}
-================
+$$
+
+# $$
 
 \frac{1}{N}
 \sum_{i=1}^{N}
@@ -700,7 +984,9 @@ $$
 
 $$
 \mathrm{Precision}
-==================
+$$
+
+# $$
 
 \frac{
 \mathrm{TP}
@@ -713,7 +999,9 @@ $$
 
 $$
 \mathrm{Recall}
-===============
+$$
+
+# $$
 
 \frac{
 \mathrm{TP}
@@ -726,12 +1014,20 @@ $$
 
 $$
 \mathrm{Accuracy}
-=================
+$$
+
+# $$
 
 \frac{
 \mathrm{TP}+\mathrm{TN}
 }{
-\mathrm{TP}+\mathrm{TN}+\mathrm{FP}+\mathrm{FN}
+\mathrm{TP}
++
+\mathrm{TN}
++
+\mathrm{FP}
++
+\mathrm{FN}
 }.
 $$
 
@@ -752,7 +1048,9 @@ For a performance metric $M$ where larger values are preferable, define the rela
 
 $$
 \Delta_M
-========
+$$
+
+# $$
 
 \frac{
 M_{\mathrm{HGNN}}
@@ -762,21 +1060,25 @@ M_{\mathrm{Transformer}}
 }{
 M_{\mathrm{Transformer}}
 }
-\times 100.
+\times
+100%.
 $$
 
 For HR@10,
 
 $$
 \Delta_{\mathrm{HR@10}}
-=======================
+$$
+
+# $$
 
 \frac{
 0.842-0.611
 }{
 0.611
 }
-\times 100
+\times
+100%
 \approx
 37.8%.
 $$
@@ -785,14 +1087,17 @@ For NDCG@10,
 
 $$
 \Delta_{\mathrm{NDCG@10}}
-=========================
+$$
+
+# $$
 
 \frac{
 0.791-0.574
 }{
 0.574
 }
-\times 100
+\times
+100%
 \approx
 37.8%.
 $$
@@ -801,14 +1106,17 @@ For precision,
 
 $$
 \Delta_{\mathrm{Precision}}
-===========================
+$$
+
+# $$
 
 \frac{
 0.900-0.650
 }{
 0.650
 }
-\times 100
+\times
+100%
 \approx
 38.5%.
 $$
@@ -817,15 +1125,18 @@ For recall,
 
 $$
 \Delta_{\mathrm{Recall}}
-========================
+$$
+
+# $$
 
 \frac{
 0.870-0.600
 }{
 0.600
 }
-\times 100
-==========
+\times
+100%
+====
 
 45.0%.
 $$
@@ -834,14 +1145,17 @@ Since lower loss is preferable, the relative loss reduction is
 
 $$
 \Delta_{\mathrm{Loss}}
-======================
+$$
+
+# $$
 
 \frac{
 0.750-0.214
 }{
 0.750
 }
-\times 100
+\times
+100%
 \approx
 71.5%.
 $$
@@ -849,19 +1163,30 @@ $$
 The primary empirical inequalities are
 
 $$
-0.842 > 0.611
+0.842
+
+>
+
+0.611
 $$
 
 and
 
 $$
-0.791 > 0.574.
+0.791
+
+>
+
+0.574.
 $$
 
 Therefore,
 
 $$
 \mathrm{HR@10}_{\mathrm{HGNN}}
+$$
+
+$$
 
 >
 
@@ -872,6 +1197,9 @@ and
 
 $$
 \mathrm{NDCG@10}_{\mathrm{HGNN}}
+$$
+
+$$
 
 >
 
@@ -888,7 +1216,11 @@ The benchmark supports the hypothesis that the dataset contains predictive relat
 
 $$
 \exists e\in\mathcal{E}
-\text{ such that }
+$$
+
+$$
+\text{such that}
+\quad
 |e|>2.
 $$
 
@@ -896,16 +1228,22 @@ The observed performance relation is
 
 $$
 \text{higher-order incidence modelling}
-\rightarrow
+$$
+
+$$
+\longrightarrow
 \text{improved ranking quality}.
 $$
 
 This result does not imply that an HGNN is universally superior to every Transformer architecture.
 
-The benchmark-specific conclusion is:
+The benchmark-specific conclusion is
 
 $$
 \text{HGNN performance}
+$$
+
+$$
 
 >
 
@@ -924,22 +1262,26 @@ Let the popularity of article $a_j$ be
 
 $$
 \pi(a_j)
-========
+$$
+
+# $$
 
 \sum_{i=1}^{N}
 \mathbf{1}
-\left(
+\left[
 u_i
 \text{ interacted with }
 a_j
-\right).
+\right].
 $$
 
 The article set may be partitioned into
 
 $$
 \mathcal{A}
-===========
+$$
+
+# $$
 
 \mathcal{A}*{\mathrm{head}}
 \cup
@@ -948,10 +1290,13 @@ $$
 \mathcal{A}_{\mathrm{tail}}.
 $$
 
-A popularity-only scoring mechanism would behave approximately as
+A popularity-only scoring mechanism behaves approximately as
 
 $$
 s_{ij}
+$$
+
+$$
 \propto
 \pi(a_j).
 $$
@@ -960,7 +1305,9 @@ A relational scoring mechanism instead has the form
 
 $$
 s_{ij}
-======
+$$
+
+# $$
 
 f_\theta
 \left(
@@ -978,9 +1325,13 @@ The popularity-segment analysis tests whether the model learns only global item 
 
 ### HGNN
 
+The HGNN propagation rule is
+
 $$
 \mathbf{X}^{(\ell+1)}
-=====================
+$$
+
+# $$
 
 \sigma
 \left(
@@ -995,7 +1346,7 @@ $$
 \right).
 $$
 
-Primary inductive bias:
+Its primary inductive bias is
 
 $$
 \text{explicit multi-entity incidence}.
@@ -1003,9 +1354,13 @@ $$
 
 ### Transformer
 
+The Transformer attention rule is
+
 $$
 \mathbf{Z}
-==========
+$$
+
+# $$
 
 \mathrm{softmax}
 \left(
@@ -1018,16 +1373,19 @@ $$
 \mathbf{V}.
 $$
 
-Primary inductive bias:
+Its primary inductive bias is
 
 $$
 \text{learned pairwise contextual dependence}.
 $$
 
-The comparison can therefore be summarised as
+The architectural comparison is therefore
 
 $$
-\mathcal{H}=(\mathcal{V},\mathcal{E})
+\mathcal{H}
+===========
+
+(\mathcal{V},\mathcal{E})
 $$
 
 versus
@@ -1058,9 +1416,11 @@ A cybersecurity hyperedge could be defined as
 
 $$
 e_{\mathrm{attack}}
-===================
+$$
 
-{
+# $$
+
+\left{
 \text{account},
 \text{device},
 \text{process},
@@ -1068,10 +1428,10 @@ e_{\mathrm{attack}}
 \text{credential},
 \text{resource},
 \text{time window}
-}.
+\right}.
 $$
 
-Each entity may appear individually benign, while the complete joint configuration is anomalous.
+Each entity may appear individually benign while the complete joint configuration is anomalous.
 
 This can be expressed as
 
@@ -1080,6 +1440,9 @@ $$
 \left(
 e_{\mathrm{attack}}
 \right)
+$$
+
+$$
 
 >
 
@@ -1087,7 +1450,7 @@ e_{\mathrm{attack}}
 \mathrm{Risk}(v).
 $$
 
-The higher-order relation therefore contains information not visible from isolated entity scores.
+The higher-order relation therefore contains information that is not visible from isolated entity scores.
 
 The same incidence-based learning architecture can support:
 
@@ -1103,16 +1466,23 @@ The domain transfer is
 
 $$
 \text{news bundle}
-\rightarrow
+$$
+
+$$
+\longrightarrow
 \text{multi-entity behavioural bundle}
-\rightarrow
+\longrightarrow
 \text{coordinated security event}.
 $$
 
-The general principle is:
+The general principle is
 
 $$
-\text{Do not reduce a higher-order event to isolated pairwise observations}
+\text{Do not reduce a higher-order event}
+$$
+
+$$
+\text{to isolated pairwise observations}
 $$
 
 when the complete interaction carries the predictive information.
@@ -1121,36 +1491,46 @@ when the complete interaction carries the predictive information.
 
 ## 14. Reproducibility
 
-A controlled benchmark requires both models to use the same dataset partitions:
+A controlled benchmark requires both models to use the same training partition:
 
 $$
 \mathcal{D}_{\mathrm{train}}^{\mathrm{HGNN}}
-============================================
-
-\mathcal{D}_{\mathrm{train}}^{\mathrm{Transformer}},
 $$
+
+# $$
+
+\mathcal{D}_{\mathrm{train}}^{\mathrm{Transformer}}.
+$$
+
+The validation partitions must satisfy
 
 $$
 \mathcal{D}_{\mathrm{validation}}^{\mathrm{HGNN}}
-=================================================
-
-\mathcal{D}_{\mathrm{validation}}^{\mathrm{Transformer}},
 $$
 
-and
+# $$
+
+\mathcal{D}_{\mathrm{validation}}^{\mathrm{Transformer}}.
+$$
+
+The test partitions must satisfy
 
 $$
 \mathcal{D}_{\mathrm{test}}^{\mathrm{HGNN}}
-===========================================
+$$
+
+# $$
 
 \mathcal{D}_{\mathrm{test}}^{\mathrm{Transformer}}.
 $$
 
-The models must also use the same evaluation function:
+The evaluation functions must satisfy
 
 $$
 \mathcal{M}_{\mathrm{eval}}^{\mathrm{HGNN}}
-===========================================
+$$
+
+# $$
 
 \mathcal{M}_{\mathrm{eval}}^{\mathrm{Transformer}}.
 $$
@@ -1159,7 +1539,9 @@ For a fixed random seed $s$,
 
 $$
 s_{\mathrm{Python}}
-===================
+$$
+
+# $$
 
 # s_{\mathrm{NumPy}}
 
@@ -1233,11 +1615,18 @@ Let the raw interaction dataset be
 
 $$
 \mathcal{D}
-===========
+$$
 
-{
-(u_i,\mathcal{I}_i,\mathcal{C}*i,y_i)
-}*{i=1}^{N},
+# $$
+
+\left{
+\left(
+u_i,
+\mathcal{I}_i,
+\mathcal{C}*i,
+y_i
+\right)
+\right}*{i=1}^{N},
 $$
 
 where:
@@ -1251,11 +1640,18 @@ The preprocessing pipeline constructs a hypergraph:
 
 $$
 \mathcal{D}
-\rightarrow
+$$
+
+$$
+\longrightarrow
 \mathcal{H}
 ===========
 
-(\mathcal{V},\mathcal{E},\mathbf{X}).
+\left(
+\mathcal{V},
+\mathcal{E},
+\mathbf{X}
+\right).
 $$
 
 The dataset is not redistributed in this repository. Download it from the official MIND website and follow its original licence and usage conditions.
@@ -1269,48 +1665,82 @@ The project tests whether directly represented higher-order relations provide a 
 The primary hypothesis is
 
 $$
-M(f_{\mathrm{HGNN}})
+M
+\left(
+f_{\mathrm{HGNN}}
+\right)
+$$
+
+$$
 
 >
 
-M(f_{\mathrm{Transformer}})
+M
+\left(
+f_{\mathrm{Transformer}}
+\right)
 $$
 
 for
 
 $$
 M
+$$
+
+$$
 \in
-{
+\left{
 \mathrm{HR@10},
 \mathrm{NDCG@10}
-}.
+\right}.
 $$
 
 The observed results satisfy both inequalities:
 
 $$
-\mathrm{HR@10}(f_{\mathrm{HGNN}})
+\mathrm{HR@10}
+\left(
+f_{\mathrm{HGNN}}
+\right)
+$$
+
+$$
 
 >
 
-\mathrm{HR@10}(f_{\mathrm{Transformer}})
+\mathrm{HR@10}
+\left(
+f_{\mathrm{Transformer}}
+\right)
 $$
 
 and
 
 $$
-\mathrm{NDCG@10}(f_{\mathrm{HGNN}})
+\mathrm{NDCG@10}
+\left(
+f_{\mathrm{HGNN}}
+\right)
+$$
+
+$$
 
 >
 
-\mathrm{NDCG@10}(f_{\mathrm{Transformer}}).
+\mathrm{NDCG@10}
+\left(
+f_{\mathrm{Transformer}}
+\right).
 $$
 
 The project therefore provides evidence for the principle
 
 $$
-\text{representational structure matters independently of model generality}.
+\text{representational structure}
+$$
+
+$$
+\text{matters independently of model generality}.
 $$
 
 A structurally specialised model can outperform a more general sequence architecture when its mathematical representation more closely matches the data-generating process.
@@ -1323,6 +1753,9 @@ The results do not prove that
 
 $$
 f_{\mathrm{HGNN}}
+$$
+
+$$
 
 >
 
@@ -1335,7 +1768,9 @@ Observed performance depends on
 
 $$
 M
-=
+$$
+
+# $$
 
 F
 \left(
@@ -1361,6 +1796,9 @@ The correct conclusion is limited to the implemented experiment:
 
 $$
 \text{HGNN}
+$$
+
+$$
 
 >
 
@@ -1395,7 +1833,9 @@ LinkedIn: [linkedin.com/in/harshwardhan-singh-2b1453318](https://linkedin.com/in
 
 $$
 \mathrm{HR@10}_{\mathrm{HGNN}}
-==============================
+$$
+
+# $$
 
 0.842
 
@@ -1408,7 +1848,9 @@ $$
 
 $$
 \mathrm{NDCG@10}_{\mathrm{HGNN}}
-================================
+$$
+
+# $$
 
 0.791
 
@@ -1423,10 +1865,14 @@ Therefore, for this benchmark,
 
 $$
 \text{explicit higher-order structure}
+$$
+
+$$
 
 >
 
 \text{pairwise-attention baseline}.
 $$
+
 
 
