@@ -126,13 +126,10 @@ Its entries are defined by
 
 $$H_{ve}$$
 
-======
-$$
-\begin{cases}
+$$ \begin{cases}
 1, & \text{when } v\in e, \
 0, & \text{when } v\notin e.
-\end{cases}
-$$
+\end{cases} $$
 
 The incidence matrix preserves the identity of each higher-order relation.
 
