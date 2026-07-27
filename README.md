@@ -123,9 +123,9 @@ $$
 
 Its entries are defined by
 
-$$
+$
 H_{ve}
-$$
+$
 ======
 $$
 \begin{cases}
