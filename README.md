@@ -1,579 +1,553 @@
-# Hypergraph Discovery: HGNN vs Transformer on MIND-Small
+# Spherical Weather Prediction with SO(3)-Equivariant Neural Networks
 
-A mathematical benchmark comparing a **Hypergraph Neural Network (HGNN)** with a **Transformer** for higher-order bundle discovery on the [MIND-Small](https://msnews.github.io/) dataset.
+A geometry-aware forecasting pipeline comparing a conventional convolutional neural network with an SO(3)-equivariant spherical model for ERA5 500 hPa wind prediction.
 
-The project investigates whether explicitly representing multi-entity relations through hypergraph incidence geometry produces stronger ranking performance than learning relational structure through pairwise self-attention.
+The project investigates whether respecting the rotational geometry of the Earth improves global vector-field prediction relative to applying planar convolutions to a latitude-longitude grid.
 
-The central hypothesis is:
+The central modelling hypothesis is:
 
-$$\text{Explicit higher-order structure}\Longrightarrow\text{improved bundle discovery}.$$
+$$\text{Spherical geometry}+\text{rotation equivariance}\Longrightarrow\text{more coherent global prediction}.$$
 
-The benchmark evaluates:
-
-* Hit Rate at 10;
-* Normalised Discounted Cumulative Gain at 10;
-* precision;
-* recall;
-* accuracy;
-* optimisation loss;
-* robustness across item-popularity segments.
+The repository is designed for reproducibility, stable cache generation, modular experimentation, and Windows-native execution without Docker.
 
 ---
 
-## 1. Mathematical Problem
+## 1. Problem Formulation
 
-Let the entity set be
+Let the atmospheric state at time $t$ be represented by
 
-$$\mathcal{V}=\lbrace v_1,v_2,\ldots,v_n\rbrace.$$
-
-The entities may represent users, articles, topics, categories, or interaction states.
-
-A conventional graph encodes pairwise relations through
-
-$$\mathcal{E}_2\subseteq\mathcal{V}\times\mathcal{V}.$$
-
-Every primitive relation therefore has the form
-
-$$(v_i,v_j).$$
-
-A hypergraph is defined as
-
-$$\mathcal{H}=(\mathcal{V},\mathcal{E}),$$
-
-where each hyperedge satisfies
-
-$$e\subseteq\mathcal{V}.$$
-
-Unlike an ordinary edge, a hyperedge may connect more than two entities:
-
-$$|e|\geq2.$$
-
-A behavioural bundle may therefore be represented as
-
-$$e_k=\lbrace u_i,a_{j_1},a_{j_2},\ldots,a_{j_m},c_r,t_s\rbrace,$$
+$$\mathbf{X}*t:\mathbb{S}^2\longrightarrow\mathbb{R}^{d*{\mathrm{in}}},$$
 
 where:
 
-* $u_i$ is a user;
-* $a_{j_\ell}$ is an interacted article;
-* $c_r$ is a category or topic;
-* $t_s$ is a temporal or contextual state.
+* $\mathbb{S}^2$ is the spherical surface of the Earth;
+* $d_{\mathrm{in}}$ is the number of input variables;
+* $\mathbf{X}_t(p)$ is the atmospheric state at position $p$.
 
-The learning objective is to construct a scoring function
+The prediction target is the 500 hPa wind field
 
-$$f_\theta:\mathcal{U}\times\mathcal{A}\longrightarrow\mathbb{R}.$$
+$$\mathbf{Y}_{t+\Delta t}:\mathbb{S}^2\longrightarrow\mathbb{R}^{2}.$$
 
-For user $u_i$ and candidate article $a_j$, the predicted compatibility score is
+At position $p$,
 
-$$s_{ij}=f_\theta(u_i,a_j).$$
+$$\mathbf{Y}*{t+\Delta t}(p)=(u*{t+\Delta t}(p),v_{t+\Delta t}(p)),$$
 
-For a relevant candidate $a_j^{+}$ and a non-relevant candidate $a_k^{-}$, the desired ordering is
+where:
 
-$$s_{ij}^{+}>s_{ik}^{-}.$$
+* $u$ is the zonal wind component;
+* $v$ is the meridional wind component;
+* $\Delta t$ is the forecast horizon.
 
----
+The learning objective is to construct a model
 
-## 2. Hypergraph Incidence Representation
+$$f_\theta:\mathbf{X}*t\longmapsto\widehat{\mathbf{Y}}*{t+\Delta t},$$
 
-The hypergraph is encoded by an incidence matrix
+such that
 
-$$\mathbf{H}\in\lbrace0,1\rbrace^{|\mathcal{V}|\times|\mathcal{E}|}.$$
-
-Its entries are defined by
-
-$$H_{ve}=\begin{cases}1,&v\in e,\0,&v\notin e.\end{cases}$$
-
-The incidence matrix preserves the identity of each higher-order relation.
-
-An adjacency matrix records whether two vertices are pairwise connected. The incidence matrix instead records which vertices participate in the same multi-entity event.
-
-Let the hyperedge-weight matrix be
-
-$$\mathbf{W}=\mathrm{diag}(w_1,w_2,\ldots,w_{|\mathcal{E}|}).$$
-
-The degree of a vertex $v$ is
-
-$$d(v)=\sum_{e\in\mathcal{E}}w_eH_{ve}.$$
-
-The degree of a hyperedge $e$ is
-
-$$\delta(e)=\sum_{v\in\mathcal{V}}H_{ve}.$$
-
-The vertex-degree matrix is
-
-$$\mathbf{D}*v=\mathrm{diag}(d(v_1),d(v_2),\ldots,d(v*{|\mathcal{V}|})).$$
-
-The hyperedge-degree matrix is
-
-$$\mathbf{D}*e=\mathrm{diag}(\delta(e_1),\delta(e_2),\ldots,\delta(e*{|\mathcal{E}|})).$$
+$$\widehat{\mathbf{Y}}*{t+\Delta t}\approx\mathbf{Y}*{t+\Delta t}.$$
 
 ---
 
-## 3. Hypergraph Propagation Operator
+## 2. Spherical Domain
 
-The normalised hypergraph propagation operator is
+The Earth is represented by the unit sphere
 
-$$\mathbf{P}_{\mathcal{H}}=\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}.$$
+$$\mathbb{S}^2={x\in\mathbb{R}^3:|x|_2=1}.$$
 
-Let the initial entity-feature matrix be
+A latitude-longitude grid stores this domain as a rectangular array, but the underlying geometry remains spherical.
 
-$$\mathbf{X}^{(0)}\in\mathbb{R}^{|\mathcal{V}|\times d_0}.$$
+A planar convolution is naturally translation equivariant:
 
-A general hypergraph neural layer is defined by
+$$f(T_a\mathbf{X})=T_a f(\mathbf{X}),$$
 
-$$\mathbf{X}^{(\ell+1)}=\sigma(\mathbf{P}_{\mathcal{H}}\mathbf{X}^{(\ell)}\mathbf{\Theta}^{(\ell)}+\mathbf{b}^{(\ell)}).$$
+where $T_a$ denotes translation by displacement $a$.
+
+Global atmospheric fields instead transform naturally under rotations
+
+$$R\in\mathrm{SO}(3).$$
+
+A spherical equivariant model is designed to satisfy
+
+$$f_\theta(R\cdot\mathbf{X})=R\cdot f_\theta(\mathbf{X}).$$
+
+Rotating the input and then predicting should therefore be equivalent to predicting first and rotating the output afterward.
+
+---
+
+## 3. The Rotation Group SO(3)
+
+The three-dimensional rotation group is
+
+$$\mathrm{SO}(3)={R\in\mathbb{R}^{3\times3}:R^{\mathsf{T}}R=\mathbf{I},\det(R)=1}.$$
+
+For a spherical signal $\mathbf{X}$, the rotated field is
+
+$$(R\cdot\mathbf{X})(p)=\mathbf{X}(R^{-1}p).$$
+
+An equivariant transformation $\Phi$ satisfies
+
+$$\Phi(R\cdot\mathbf{X})=R\cdot\Phi(\mathbf{X}).$$
+
+This encodes the structural rule
+
+$$\text{same physical pattern under rotation}\Longrightarrow\text{consistently transformed representation}.$$
+
+The model therefore does not need to learn equivalent atmospheric structures independently at every orientation.
+
+---
+
+## 4. Spherical Mesh Construction
+
+The spherical model operates on a discrete mesh
+
+$$\mathcal{M}=(\mathcal{V},\mathcal{E}),$$
+
+where:
+
+* $\mathcal{V}$ is the set of spherical vertices;
+* $\mathcal{E}$ is the set of neighbourhood relations.
+
+Each vertex is embedded in Cartesian coordinates:
+
+$$\mathbf{r}_i=(x_i,y_i,z_i)\in\mathbb{S}^2.$$
+
+For latitude $\phi_i$ and longitude $\lambda_i$,
+
+$$x_i=\cos(\phi_i)\cos(\lambda_i),$$
+
+$$y_i=\cos(\phi_i)\sin(\lambda_i),$$
+
+and
+
+$$z_i=\sin(\phi_i).$$
+
+For each vertex $i$, the $k$ nearest neighbours are
+
+$$\mathcal{N}_k(i)={j_1,j_2,\ldots,j_k}.$$
+
+The spherical distance between vertices $i$ and $j$ is
+
+$$d_{\mathbb{S}^2}(i,j)=\arccos(\mathbf{r}_i^{\mathsf{T}}\mathbf{r}_j).$$
+
+Neighbourhood construction is performed in chunks to avoid allocating the full pairwise distance matrix.
+
+---
+
+## 5. Baseline CNN
+
+The baseline treats the atmospheric field as a planar tensor
+
+$$\mathbf{X}\in\mathbb{R}^{C\times H\times W}.$$
+
+A convolutional layer computes
+
+$$\mathbf{Z}^{(\ell+1)}=\sigma(\mathbf{K}^{(\ell)}*\mathbf{Z}^{(\ell)}+\mathbf{b}^{(\ell)}),$$
+
+where:
+
+* $*$ denotes planar convolution;
+* $\mathbf{K}^{(\ell)}$ is a learned kernel;
+* $\mathbf{b}^{(\ell)}$ is a bias term;
+* $\sigma$ is a nonlinear activation.
+
+The baseline prediction is
+
+$$\widehat{\mathbf{Y}}*{\mathrm{CNN}}=f*{\mathrm{CNN}}(\mathbf{X}).$$
+
+This model is computationally efficient but does not explicitly preserve spherical rotational structure.
+
+Potential geometric limitations include:
+
+* latitude-dependent grid distortion;
+* artificial longitudinal boundaries;
+* polar singularities;
+* orientation-sensitive filters;
+* nonuniform physical area per grid cell.
+
+---
+
+## 6. Spherical Equivariant Model
+
+The spherical model represents atmospheric variables on the mesh:
+
+$$\mathbf{X}*{\mathcal{M}}\in\mathbb{R}^{|\mathcal{V}|\times d*{\mathrm{in}}}.$$
+
+A geometry-aware message-passing layer is written as
+
+$$\mathbf{h}_i^{(\ell+1)}=\sigma\left(\mathbf{W}*0^{(\ell)}\mathbf{h}*i^{(\ell)}+\sum*{j\in\mathcal{N}(i)}\Psi*\ell(\mathbf{r}_i,\mathbf{r}_j)\mathbf{h}_j^{(\ell)}\right).$$
 
 Here:
 
-* $\mathbf{X}^{(\ell)}$ is the representation at layer $\ell$;
-* $\mathbf{\Theta}^{(\ell)}$ is a trainable weight matrix;
-* $\mathbf{b}^{(\ell)}$ is a bias vector;
-* $\sigma$ is a nonlinear activation.
+* $\mathbf{h}_i^{(\ell)}$ is the representation at vertex $i$;
+* $\mathcal{N}(i)$ is the spherical neighbourhood of $i$;
+* $\Psi_\ell$ is a geometry-dependent interaction map.
 
-For the first layer,
+The spherical prediction is
 
-$$\mathbf{X}^{(1)}=\mathrm{ReLU}(\mathbf{P}_{\mathcal{H}}\mathbf{X}^{(0)}\mathbf{\Theta}^{(0)}+\mathbf{b}^{(0)}).$$
+$$\widehat{\mathbf{Y}}*{\mathrm{sph}}=f*{\mathrm{sph}}(\mathbf{X}_{\mathcal{M}}).$$
 
-For the second layer,
+The architecture is designed so that
 
-$$\mathbf{Z}*{\mathcal{H}}=\mathbf{P}*{\mathcal{H}}\mathbf{X}^{(1)}\mathbf{\Theta}^{(1)}+\mathbf{b}^{(1)}.$$
-
-The propagation process is
-
-$$\text{vertex}\longrightarrow\text{hyperedge}\longrightarrow\text{vertex}.$$
-
-The vertex-to-hyperedge aggregation term is
-
-$$\mathbf{X}_{\mathcal{E}}^{(\ell)}=\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}\mathbf{X}^{(\ell)}.$$
-
-The hyperedge-to-vertex propagation term is
-
-$$\mathbf{X}_{\mathcal{V}}^{(\ell+1)}=\mathbf{D}*v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{X}*{\mathcal{E}}^{(\ell)}.$$
-
-Combining the two stages gives
-
-$$\mathbf{X}_{\mathcal{V}}^{(\ell+1)}=\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}\mathbf{X}^{(\ell)}.$$
-
-This allows information to propagate through a complete multi-entity relation without decomposing that relation into independent pairs.
+$$f_{\mathrm{sph}}(R\cdot\mathbf{X}*{\mathcal{M}})=R\cdot f*{\mathrm{sph}}(\mathbf{X}_{\mathcal{M}}).$$
 
 ---
 
-## 4. Hypergraph Laplacian
+## 7. Equivariant Feature Types
 
-The normalised hypergraph Laplacian is
+SO(3)-equivariant representations may be decomposed into angular orders:
 
-$$\mathbf{L}*{\mathcal{H}}=\mathbf{I}-\mathbf{P}*{\mathcal{H}}.$$
+$$\mathbf{h}=\bigoplus_{\ell=0}^{L}\mathbf{h}^{(\ell)}.$$
 
-Equivalently,
+The $\ell=0$ component transforms as a scalar.
 
-$$\mathbf{P}*{\mathcal{H}}=\mathbf{I}-\mathbf{L}*{\mathcal{H}}.$$
+The $\ell=1$ component transforms as a vector.
 
-For an embedding matrix,
+Higher-order components encode more complex directional structure.
 
-$$\mathbf{Z}=\begin{bmatrix}\mathbf{z}_1^{\mathsf{T}}\\mathbf{z}*2^{\mathsf{T}}\\vdots\\mathbf{z}*{|\mathcal{V}|}^{\mathsf{T}}\end{bmatrix},$$
+Tensor-product interactions satisfy
 
-the hypergraph structural energy is
+$$\mathbf{h}^{(\ell_1)}\otimes\mathbf{h}^{(\ell_2)}=\bigoplus_{\ell=|\ell_1-\ell_2|}^{\ell_1+\ell_2}\mathbf{h}^{(\ell)}.$$
 
-$$\mathcal{E}*{\mathcal{H}}(\mathbf{Z})=\mathrm{Tr}(\mathbf{Z}^{\mathsf{T}}\mathbf{L}*{\mathcal{H}}\mathbf{Z}).$$
-
-A low structural energy encourages entities participating in the same hyperedge to acquire compatible representations.
-
-Thus,
-
-$$v_i,v_j\in e\Longrightarrow|\mathbf{z}_i-\mathbf{z}_j|_2\text{ is structurally constrained}.$$
-
-The smoothness objective is
-
-$$\min_{\mathbf{Z}}\mathcal{E}*{\mathcal{H}}(\mathbf{Z})=\min*{\mathbf{Z}}\mathrm{Tr}(\mathbf{Z}^{\mathsf{T}}\mathbf{L}_{\mathcal{H}}\mathbf{Z}).$$
+This allows scalar, vector, and higher-order features to interact while preserving their transformation rules.
 
 ---
 
-## 5. Transformer Baseline
+## 8. Wind-Vector Representation
 
-Let an interaction sequence be represented by
+At location $p$, the predicted wind vector is
 
-$$\mathbf{S}=\begin{bmatrix}\mathbf{s}_1^{\mathsf{T}}\\mathbf{s}_2^{\mathsf{T}}\\vdots\\mathbf{s}_m^{\mathsf{T}}\end{bmatrix}\in\mathbb{R}^{m\times d}.$$
+$$\widehat{\mathbf{w}}(p)=(\widehat{u}(p),\widehat{v}(p)).$$
 
-The query matrix is
+Its magnitude is
 
-$$\mathbf{Q}=\mathbf{S}\mathbf{W}_Q.$$
+$$|\widehat{\mathbf{w}}(p)|_2=\sqrt{\widehat{u}(p)^2+\widehat{v}(p)^2}.$$
 
-The key matrix is
+Its direction is
 
-$$\mathbf{K}=\mathbf{S}\mathbf{W}_K.$$
+$$\widehat{\alpha}(p)=\arctan2(\widehat{v}(p),\widehat{u}(p)).$$
 
-The value matrix is
+The true wind vector is
 
-$$\mathbf{V}=\mathbf{S}\mathbf{W}_V.$$
+$$\mathbf{w}(p)=(u(p),v(p)).$$
 
-Scaled dot-product attention is
+The forecasting task therefore evaluates:
 
-$$\mathrm{Attention}(\mathbf{Q},\mathbf{K},\mathbf{V})=\mathrm{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^{\mathsf{T}}}{\sqrt{d_k}}\right)\mathbf{V}.$$
-
-The attention coefficient between positions $i$ and $j$ is
-
-$$\alpha_{ij}=\frac{\exp(\mathbf{q}_i^{\mathsf{T}}\mathbf{k}*j/\sqrt{d_k})}{\displaystyle\sum*{r=1}^{m}\exp(\mathbf{q}_i^{\mathsf{T}}\mathbf{k}_r/\sqrt{d_k})}.$$
-
-Each primitive attention coefficient represents a pairwise relation:
-
-$$(i,j).$$
-
-Multiple attention layers can approximate complex dependencies, but the elementary interaction remains pairwise.
-
-The hypergraph operator is
-
-$$\mathbf{P}_{\mathcal{H}}=\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}.$$
-
-The attention operator is
-
-$$\mathbf{A}_{\mathrm{attn}}=\mathrm{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^{\mathsf{T}}}{\sqrt{d_k}}\right).$$
-
-The first begins with explicit higher-order incidence structure. The second learns pairwise contextual weights from the input sequence.
+* component-wise accuracy;
+* vector magnitude;
+* angular coherence;
+* spatial consistency;
+* divergence behaviour;
+* hemispheric robustness.
 
 ---
 
-## 6. Why Pairwise Reduction Can Lose Information
+## 9. Training Objectives
 
-Consider a hyperedge containing $r$ entities:
+The component-wise mean-squared error is
 
-$$e=\lbrace v_1,v_2,\ldots,v_r\rbrace.$$
+$$\mathcal{L}*{\mathrm{MSE}}=\frac{1}{2N}\sum*{i=1}^{N}\left[(\widehat{u}_i-u_i)^2+(\widehat{v}_i-v_i)^2\right].$$
 
-A pairwise expansion replaces this hyperedge with up to
+The component-wise mean absolute error is
 
-$$\binom{r}{2}=\frac{r(r-1)}{2}$$
+$$\mathcal{L}*{\mathrm{MAE}}=\frac{1}{2N}\sum*{i=1}^{N}\left[|\widehat{u}_i-u_i|+|\widehat{v}_i-v_i|\right].$$
 
-ordinary edges.
+The magnitude error is
 
-However, as relational objects,
+$$\mathcal{L}*{\mathrm{mag}}=\frac{1}{N}\sum*{i=1}^{N}\left||\widehat{\mathbf{w}}_i|_2-|\mathbf{w}_i|_2\right|.$$
 
-$$e\neq\bigcup_{1\leq i<j\leq r}\lbrace(v_i,v_j)\rbrace.$$
+A directional loss is
 
-The pairwise expansion records that individual pairs are connected, but it does not necessarily preserve the fact that all $r$ entities participated in one common event.
+$$\mathcal{L}*{\mathrm{ang}}=\frac{1}{N}\sum*{i=1}^{N}\left[1-\frac{\widehat{\mathbf{w}}_i^{\mathsf{T}}\mathbf{w}_i}{|\widehat{\mathbf{w}}_i|_2|\mathbf{w}_i|_2+\varepsilon}\right].$$
 
-For example, consider the bundle
+A composite objective can be defined as
 
-$$e_{\mathrm{bundle}}=\lbrace\text{user},\text{article},\text{topic},\text{session},\text{time}\rbrace.$$
-
-Its pairwise projection is
-
-$$\Pi_2(e_{\mathrm{bundle}})=\lbrace(\text{user},\text{article}),(\text{user},\text{topic}),(\text{article},\text{topic}),\ldots\rbrace.$$
-
-In general,
-
-$$e_{\mathrm{bundle}}\not\equiv\Pi_2(e_{\mathrm{bundle}}).$$
-
-The HGNN preserves the factorisation
-
-$$\mathcal{V}\xrightarrow{\mathbf{H}^{\mathsf{T}}}\mathcal{E}\xrightarrow{\mathbf{H}}\mathcal{V}.$$
-
-This gives the model an explicit inductive bias for recovering multi-entity structure.
+$$\mathcal{L}=\lambda_1\mathcal{L}*{\mathrm{MSE}}+\lambda_2\mathcal{L}*{\mathrm{mag}}+\lambda_3\mathcal{L}_{\mathrm{ang}}.$$
 
 ---
 
-## 7. Prediction Function
+## 10. Cache Generation
 
-Let the learned user representation be
+The pipeline generates reusable NumPy caches for the baseline and spherical representations.
 
-$$\mathbf{z}_{u_i}\in\mathbb{R}^{d}.$$
+A planar cache has the form
 
-Let the learned candidate representation be
+$$\mathbf{C}_{\mathrm{grid}}\in\mathbb{R}^{N\times T\times C\times H\times W}.$$
 
-$$\mathbf{z}_{a_j}\in\mathbb{R}^{d}.$$
+A spherical cache has the form
 
-A basic compatibility score is
+$$\mathbf{C}_{\mathrm{sph}}\in\mathbb{R}^{N\times T\times|\mathcal{V}|\times C}.$$
 
-$$s_{ij}=\mathbf{z}*{u_i}^{\mathsf{T}}\mathbf{z}*{a_j}.$$
+Cache generation is divided into chunks:
 
-The corresponding relevance probability is
+$$\mathbf{C}=\bigcup_{b=1}^{B}\mathbf{C}^{(b)}.$$
 
-$$\widehat{p}*{ij}=\frac{1}{1+\exp(-s*{ij})}.$$
+Each output is written using the sequence
 
-For binary relevance labels,
+$$\text{temporary write}\longrightarrow\text{integrity check}\longrightarrow\text{atomic rename}.$$
 
-$$y_{ij}\in\lbrace0,1\rbrace,$$
+This prevents interrupted writes from being mistaken for complete cache files.
 
-the binary cross-entropy loss is
+The cache system supports:
 
-$$\mathcal{L}*{\mathrm{BCE}}=-\frac{1}{N}\sum*{(i,j)}\left[y_{ij}\log(\widehat{p}*{ij})+(1-y*{ij})\log(1-\widehat{p}_{ij})\right].$$
-
-With quadratic regularisation, the total objective is
-
-$$\mathcal{L}=\mathcal{L}_{\mathrm{BCE}}+\lambda|\theta|_2^2.$$
-
-A pairwise ranking objective may alternatively be written as
-
-$$\mathcal{L}*{\mathrm{rank}}=-\sum*{(i,j,k)}\log\left[\frac{1}{1+\exp(-(s_{ij}^{+}-s_{ik}^{-}))}\right].$$
+* restartable preprocessing;
+* deterministic sample ordering;
+* bounded memory usage;
+* corruption-resistant output generation;
+* consistent feature reuse across experiments.
 
 ---
 
-## 8. Evaluation Metrics
+## 11. Reproducibility
 
-### Hit Rate at 10
-
-Let $\mathcal{R}_i$ be the relevant-item set for user $u_i$, and let $\widehat{\mathcal{R}}_i^{(10)}$ be the ten highest-ranked predictions.
-
-The Hit Rate at 10 is
-
-$$\mathrm{HR@10}=\frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\left[\mathcal{R}_i\cap\widehat{\mathcal{R}}_i^{(10)}\neq\varnothing\right].$$
-
-### Discounted Cumulative Gain
-
-For user $u_i$,
-
-$$\mathrm{DCG@10}*i=\sum*{r=1}^{10}\frac{2^{\mathrm{rel}_{i,r}}-1}{\log_2(r+1)}.$$
-
-### Normalised Discounted Cumulative Gain
-
-For user $u_i$,
-
-$$\mathrm{NDCG@10}_i=\frac{\mathrm{DCG@10}_i}{\mathrm{IDCG@10}_i}.$$
-
-The mean NDCG is
-
-$$\mathrm{NDCG@10}=\frac{1}{N}\sum_{i=1}^{N}\mathrm{NDCG@10}_i.$$
-
-### Precision
-
-$$\mathrm{Precision}=\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FP}}.$$
-
-### Recall
-
-$$\mathrm{Recall}=\frac{\mathrm{TP}}{\mathrm{TP}+\mathrm{FN}}.$$
-
-### Accuracy
-
-$$\mathrm{Accuracy}=\frac{\mathrm{TP}+\mathrm{TN}}{\mathrm{TP}+\mathrm{TN}+\mathrm{FP}+\mathrm{FN}}.$$
-
----
-
-## 9. Results
-
-| Metric     |      HGNN |         Transformer |
-| :--------- | --------: | ------------------: |
-| HR@10      | **0.842** |               0.611 |
-| NDCG@10    | **0.791** |               0.574 |
-| Precision  | **0.900** |               0.650 |
-| Recall     | **0.870** |               0.600 |
-| Accuracy   | **0.900** |               0.650 |
-| Final loss | **0.214** | approximately 0.750 |
-
-For a metric $M$ where larger values are preferable, define the relative improvement as
-
-$$\Delta_M=\frac{M_{\mathrm{HGNN}}-M_{\mathrm{Transformer}}}{M_{\mathrm{Transformer}}}\times100%.$$
-
-For HR@10,
-
-$$\Delta_{\mathrm{HR@10}}=\frac{0.842-0.611}{0.611}\times100%\approx37.8%.$$
-
-For NDCG@10,
-
-$$\Delta_{\mathrm{NDCG@10}}=\frac{0.791-0.574}{0.574}\times100%\approx37.8%.$$
-
-For precision,
-
-$$\Delta_{\mathrm{Precision}}=\frac{0.900-0.650}{0.650}\times100%\approx38.5%.$$
-
-For recall,
-
-$$\Delta_{\mathrm{Recall}}=\frac{0.870-0.600}{0.600}\times100%=45.0%.$$
-
-Since lower loss is preferable, the relative loss reduction is
-
-$$\Delta_{\mathrm{Loss}}=\frac{0.750-0.214}{0.750}\times100%\approx71.5%.$$
-
-The primary empirical inequalities are
-
-$$0.842>0.611$$
-
-and
-
-$$0.791>0.574.$$
-
-Therefore,
-
-$$\mathrm{HR@10}*{\mathrm{HGNN}}>\mathrm{HR@10}*{\mathrm{Transformer}}$$
-
-and
-
-$$\mathrm{NDCG@10}*{\mathrm{HGNN}}>\mathrm{NDCG@10}*{\mathrm{Transformer}}.$$
-
-Full visual comparisons and experimental summaries are available in [`results/summary.md`](results/summary.md).
-
----
-
-## 10. Experimental Interpretation
-
-The benchmark supports the hypothesis that the dataset contains predictive relational structure of order greater than two:
-
-$$\exists e\in\mathcal{E}\text{ such that }|e|>2.$$
-
-The observed performance relation is
-
-$$\text{higher-order incidence modelling}\longrightarrow\text{improved ranking quality}.$$
-
-This result does not imply that an HGNN is universally superior to every Transformer architecture.
-
-The benchmark-specific conclusion is
-
-$$\text{HGNN performance}>\text{selected Transformer baseline performance}$$
-
-under the implemented data construction, training procedure, and evaluation protocol.
-
-The evidence indicates that the HGNN inductive bias was more closely aligned with the bundle-discovery structure of this task.
-
----
-
-## 11. Popularity-Segment Robustness
-
-Let the popularity of article $a_j$ be
-
-$$\pi(a_j)=\sum_{i=1}^{N}\mathbf{1}\left[u_i\text{ interacted with }a_j\right].$$
-
-The article set may be partitioned into
-
-$$\mathcal{A}=\mathcal{A}*{\mathrm{head}}\cup\mathcal{A}*{\mathrm{middle}}\cup\mathcal{A}_{\mathrm{tail}}.$$
-
-A popularity-only scoring mechanism behaves approximately as
-
-$$s_{ij}\propto\pi(a_j).$$
-
-A relational scoring mechanism instead has the form
-
-$$s_{ij}=f_\theta(u_i,a_j,\mathcal{H}).$$
-
-The popularity-segment analysis tests whether the model learns only global item frequency or preserves useful structural information for less frequent items.
-
----
-
-## 12. Architectural Comparison
-
-### HGNN
-
-The HGNN propagation rule is
-
-$$\mathbf{X}^{(\ell+1)}=\sigma(\mathbf{D}_v^{-1/2}\mathbf{H}\mathbf{W}\mathbf{D}_e^{-1}\mathbf{H}^{\mathsf{T}}\mathbf{D}_v^{-1/2}\mathbf{X}^{(\ell)}\mathbf{\Theta}^{(\ell)}).$$
-
-Its primary inductive bias is
-
-$$\text{explicit multi-entity incidence}.$$
-
-### Transformer
-
-The Transformer attention rule is
-
-$$\mathbf{Z}=\mathrm{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^{\mathsf{T}}}{\sqrt{d_k}}\right)\mathbf{V}.$$
-
-Its primary inductive bias is
-
-$$\text{learned pairwise contextual dependence}.$$
-
-The architectural comparison is therefore
-
-$$\mathcal{H}=(\mathcal{V},\mathcal{E})$$
-
-versus
-
-$$\mathbf{Q}\mathbf{K}^{\mathsf{T}}.$$
-
-Equivalently,
-
-$$\text{explicit relational order}$$
-
-versus
-
-$$\text{implicit relational approximation}.$$
-
----
-
-## 13. Relevance to Structured AI and Cybersecurity
-
-The mathematical architecture is not specific to recommendation data.
-
-A cybersecurity hyperedge could be defined as
-
-$$e_{\mathrm{attack}}=\lbrace\text{account},\text{device},\text{process},\text{IP address},\text{credential},\text{resource},\text{time window}\rbrace.$$
-
-Each entity may appear individually benign while the complete joint configuration is anomalous.
-
-This can be expressed as
-
-$$\mathrm{Risk}(e_{\mathrm{attack}})>\sum_{v\in e_{\mathrm{attack}}}\mathrm{Risk}(v).$$
-
-The higher-order relation therefore contains information that is not visible from isolated entity scores.
-
-The same incidence-based learning architecture can support:
-
-* coordinated-account detection;
-* shared-infrastructure analysis;
-* campaign-level behaviour discovery;
-* multi-stage attack modelling;
-* identity-device-resource correlation;
-* distributed fraud detection;
-* structured state representations for autonomous agents.
-
-The domain transfer is
-
-$$\text{news bundle}\longrightarrow\text{multi-entity behavioural bundle}\longrightarrow\text{coordinated security event}.$$
-
-The general principle is
-
-$$\text{Do not reduce a higher-order event to isolated pairwise observations}$$
-
-when the complete interaction carries the predictive information.
-
----
-
-## 14. Reproducibility
-
-A controlled benchmark requires both models to use the same training partition:
-
-$$\mathcal{D}*{\mathrm{train}}^{\mathrm{HGNN}}=\mathcal{D}*{\mathrm{train}}^{\mathrm{Transformer}}.$$
-
-The validation partitions must satisfy
-
-$$\mathcal{D}*{\mathrm{validation}}^{\mathrm{HGNN}}=\mathcal{D}*{\mathrm{validation}}^{\mathrm{Transformer}}.$$
-
-The test partitions must satisfy
-
-$$\mathcal{D}*{\mathrm{test}}^{\mathrm{HGNN}}=\mathcal{D}*{\mathrm{test}}^{\mathrm{Transformer}}.$$
-
-The evaluation functions must satisfy
-
-$$\mathcal{M}*{\mathrm{eval}}^{\mathrm{HGNN}}=\mathcal{M}*{\mathrm{eval}}^{\mathrm{Transformer}}.$$
-
-For a fixed random seed $s$,
+For random seed $s$,
 
 $$s_{\mathrm{Python}}=s_{\mathrm{NumPy}}=s_{\mathrm{PyTorch}}=s.$$
 
-The implementation is designed around:
+A controlled model comparison requires
 
-* deterministic data preparation;
-* controlled model comparison;
-* fixed evaluation definitions;
-* explicit artefact generation;
-* minimal external dependencies.
+$$\mathcal{D}*{\mathrm{train}}^{\mathrm{CNN}}=\mathcal{D}*{\mathrm{train}}^{\mathrm{sph}},$$
+
+$$\mathcal{D}*{\mathrm{val}}^{\mathrm{CNN}}=\mathcal{D}*{\mathrm{val}}^{\mathrm{sph}},$$
+
+and
+
+$$\mathcal{D}*{\mathrm{test}}^{\mathrm{CNN}}=\mathcal{D}*{\mathrm{test}}^{\mathrm{sph}}.$$
+
+The evaluation functions must also remain fixed:
+
+$$\mathcal{M}*{\mathrm{CNN}}=\mathcal{M}*{\mathrm{sph}}.$$
+
+The repository additionally uses:
+
+* deterministic sample indexing;
+* version-pinned dependencies;
+* chunked mesh construction;
+* atomic NumPy saves;
+* explicit output manifests;
+* Windows-native execution;
+* restart-safe preprocessing.
 
 ---
 
-## 15. Environment
+## 12. Evaluation Metrics
 
-* Python 3.10.11
-* PyTorch 2.1.0
-* CUDA 12.4, optional
-* Windows-native execution
-* no Docker requirement
-* no WSL requirement
-* CPU-compatible execution path
+### Mean-Squared Error
+
+$$\mathrm{MSE}=\frac{1}{2N}\sum_{i=1}^{N}\left[(\widehat{u}_i-u_i)^2+(\widehat{v}_i-v_i)^2\right].$$
+
+### Mean Absolute Error
+
+$$\mathrm{MAE}=\frac{1}{2N}\sum_{i=1}^{N}\left[|\widehat{u}_i-u_i|+|\widehat{v}_i-v_i|\right].$$
+
+### Root-Mean-Squared Error
+
+$$\mathrm{RMSE}=\sqrt{\mathrm{MSE}}.$$
+
+### Angular Error
+
+$$\mathrm{AngleError}=\frac{1}{N}\sum_{i=1}^{N}\arccos\left(\frac{\widehat{\mathbf{w}}_i^{\mathsf{T}}\mathbf{w}_i}{|\widehat{\mathbf{w}}_i|_2|\mathbf{w}_i|_2+\varepsilon}\right).$$
+
+### Magnitude Mean Absolute Error
+
+$$\mathrm{MagMAE}=\frac{1}{N}\sum_{i=1}^{N}\left||\widehat{\mathbf{w}}_i|_2-|\mathbf{w}_i|_2\right|.$$
+
+### Absolute Divergence Error
+
+$$\mathrm{DivAbs}=\frac{1}{N}\sum_{i=1}^{N}\left|\nabla\cdot\widehat{\mathbf{w}}_i-\nabla\cdot\mathbf{w}_i\right|.$$
+
+### Northern-Hemisphere MSE
+
+$$\mathrm{MSE}*{\mathrm{North}}=\frac{1}{|\mathcal{N}|}\sum*{i\in\mathcal{N}}|\widehat{\mathbf{w}}_i-\mathbf{w}_i|_2^2.$$
+
+### Southern-Hemisphere MSE
+
+$$\mathrm{MSE}*{\mathrm{South}}=\frac{1}{|\mathcal{S}|}\sum*{i\in\mathcal{S}}|\widehat{\mathbf{w}}_i-\mathbf{w}_i|_2^2.$$
 
 ---
 
-## 16. Installation
+## 13. Performance Summary
+
+| Metric                    | Baseline CNN | Spherical Model | Relative Change |
+| :------------------------ | -----------: | --------------: | --------------: |
+| MSE                       |       0.5319 |      **0.5257** |  **1.2% lower** |
+| MAE                       |       0.5533 |      **0.5471** |  **1.1% lower** |
+| RMSE                      |       0.7293 |      **0.7250** |  **0.6% lower** |
+| Angle Error               |   **0.4181** |          0.4336 |     3.7% higher |
+| Magnitude MAE             |       0.5512 |      **0.4546** | **17.5% lower** |
+| Divergence Absolute Error |   **0.1841** |          0.1941 |     5.4% higher |
+| MSE North                 |       0.6267 |      **0.6235** |  **0.5% lower** |
+| MSE South                 |       0.4370 |      **0.4279** |  **2.1% lower** |
+| Composite Score           |       0.6798 |      **0.6676** |  **1.8% lower** |
+
+The spherical model performs better on seven of the nine raw metric rows shown above: MSE, MAE, RMSE, magnitude MAE, northern MSE, southern MSE, and composite score.
+
+It performs worse on:
+
+* angle error;
+* divergence absolute error.
+
+The largest improvement is in magnitude MAE:
+
+$$\Delta_{\mathrm{MagMAE}}=\frac{0.5512-0.4546}{0.5512}\times100%\approx17.5%.$$
+
+The MSE improvement is
+
+$$\Delta_{\mathrm{MSE}}=\frac{0.5319-0.5257}{0.5319}\times100%\approx1.2%.$$
+
+The southern-hemisphere improvement is
+
+$$\Delta_{\mathrm{South}}=\frac{0.4370-0.4279}{0.4370}\times100%\approx2.1%.$$
+
+The composite-score improvement is
+
+$$\Delta_{\mathrm{Composite}}=\frac{0.6798-0.6676}{0.6798}\times100%\approx1.8%.$$
+
+---
+
+## 14. Result Interpretation
+
+The spherical model achieves lower values for:
+
+* total MSE;
+* total MAE;
+* RMSE;
+* magnitude MAE;
+* northern-hemisphere MSE;
+* southern-hemisphere MSE;
+* composite score.
+
+The strongest improvement occurs in predicted wind magnitude.
+
+This indicates that the equivariant model reconstructs vector-field strength more accurately, even though its mean directional error is slightly higher.
+
+The observed trade-off is
+
+$$\text{improved magnitude and aggregate field accuracy}\quad\text{versus}\quad\text{slightly weaker angular and divergence accuracy}.$$
+
+The southern-hemisphere improvement is larger than the northern-hemisphere improvement:
+
+$$2.1%>0.5%.$$
+
+This suggests that the value of spherical geometry is not spatially uniform and should be examined through regional error maps rather than aggregate metrics alone.
+
+---
+
+## 15. Spatial Error Analysis
+
+Let the pointwise vector error of model $m$ be
+
+$$E_m(p)=|\widehat{\mathbf{w}}_m(p)-\mathbf{w}(p)|_2.$$
+
+Define the spherical-model improvement field as
+
+$$\Delta E(p)=E_{\mathrm{CNN}}(p)-E_{\mathrm{sph}}(p).$$
+
+Then:
+
+* $\Delta E(p)>0$ means the spherical model has lower error;
+* $\Delta E(p)<0$ means the CNN baseline has lower error.
+
+The improvement maps reveal where geometric equivariance helps and where the planar model remains stronger.
+
+Reported improvements are concentrated in:
+
+* mid-latitude regions;
+* parts of the southern hemisphere;
+* regions with strong magnitude variation;
+* spatially coherent vector structures.
+
+---
+
+## 16. Visual Outputs
+
+The primary wind-field visualisation compares:
+
+* ERA5 ground truth;
+* baseline CNN prediction;
+* spherical-model prediction;
+* baseline absolute error;
+* spherical absolute error;
+* model-improvement heatmaps.
+
+The comparison includes zonal wind $u$ and meridional wind $v$.
+
+Red regions in the improvement map indicate
+
+$$E_{\mathrm{sph}}(p)<E_{\mathrm{CNN}}(p).$$
+
+Blue regions indicate
+
+$$E_{\mathrm{CNN}}(p)<E_{\mathrm{sph}}(p).$$
+
+These maps provide a spatial explanation of the aggregate metric differences.
+
+---
+
+## 17. Architectural Significance
+
+The project demonstrates the principle
+
+$$\text{representation symmetry should match data symmetry}.$$
+
+When a domain has known transformations, the model can be designed so that its internal features transform consistently with those transformations.
+
+This principle applies to systems involving:
+
+* globally distributed inputs;
+* orientation-dependent fields;
+* spatially indexed representations;
+* geometry-aware retrieval;
+* multiresolution data;
+* distributed cache generation;
+* representations shared across coordinate systems.
+
+A conventional model learns transformation behaviour indirectly.
+
+An equivariant model constrains that behaviour directly:
+
+$$\text{input transformation}\Longrightarrow\text{predictable feature transformation}.$$
+
+This can improve consistency and reduce the need to relearn equivalent structures from multiple orientations.
+
+---
+
+## 18. Repository Structure
+
+```text
+.
+├── scripts/
+│   ├── preprocess.py
+│   ├── build_baseline_cache.py
+│   ├── build_spherical_cache.py
+│   ├── train_baseline.py
+│   └── train_spherical.py
+├── models/
+│   ├── baseline_cnn.py
+│   ├── spherical_model.py
+│   └── tensor_product_blocks.py
+├── notebooks/
+│   └── weather_analysis.ipynb
+├── results/
+│   ├── figures/
+│   ├── metrics/
+│   └── summaries/
+├── cache/
+│   ├── baseline/
+│   └── spherical/
+├── requirements.txt
+├── LICENSE
+└── README.md
+```
+
+---
+
+## 19. How to Run
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/Hars15kth/-HGNN-News.git
-cd -HGNN-News
+git clone <repository-url>
+cd <repository-directory>
 ```
 
 Create a virtual environment:
@@ -582,7 +556,7 @@ Create a virtual environment:
 python -m venv .venv
 ```
 
-Activate the environment on Windows:
+Activate it on Windows:
 
 ```bash
 .venv\Scripts\activate
@@ -594,123 +568,156 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Verify PyTorch and CUDA availability:
+Run preprocessing:
 
 ```bash
-python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+python scripts/preprocess.py
+```
+
+Build the baseline cache:
+
+```bash
+python scripts/build_baseline_cache.py
+```
+
+Build the spherical cache:
+
+```bash
+python scripts/build_spherical_cache.py
+```
+
+Train the baseline model:
+
+```bash
+python scripts/train_baseline.py
+```
+
+Train the spherical model:
+
+```bash
+python scripts/train_spherical.py
+```
+
+Launch the analysis notebook:
+
+```bash
+jupyter notebook notebooks/weather_analysis.ipynb
 ```
 
 ---
 
-## 17. Dataset
+## 20. Environment
 
-The project uses the [MIND-Small dataset](https://msnews.github.io/).
-
-Let the raw interaction dataset be
-
-$$\mathcal{D}=\lbrace(u_i,\mathcal{I}_i,\mathcal{C}*i,y_i)\rbrace*{i=1}^{N},$$
-
-where:
-
-* $u_i$ is a user;
-* $\mathcal{I}_i$ is the interaction history;
-* $\mathcal{C}_i$ is the candidate-item set;
-* $y_i$ is the relevance label.
-
-The preprocessing pipeline constructs a hypergraph:
-
-$$\mathcal{D}\longrightarrow\mathcal{H}=(\mathcal{V},\mathcal{E},\mathbf{X}).$$
-
-The dataset is not redistributed in this repository. Download it from the official MIND website and follow its original licence and usage conditions.
+* Python
+* PyTorch
+* NumPy
+* SciPy
+* scikit-learn
+* xarray
+* NetCDF4
+* Matplotlib
+* Jupyter
+* Windows-native execution
+* no Docker requirement
+* chunked KNN construction
+* atomic NumPy cache saves
 
 ---
 
-## 18. Research Contribution
+## 21. Generated Artifacts
 
-The project tests whether directly represented higher-order relations provide a stronger inductive bias than pairwise attention for bundle-sensitive ranking.
+### Processed Data
 
-The primary hypothesis is
+* normalised ERA5 tensors;
+* zonal and meridional wind targets;
+* train, validation, and test indices;
+* latitude-longitude coordinate arrays;
+* spherical Cartesian coordinates.
 
-$$M(f_{\mathrm{HGNN}})>M(f_{\mathrm{Transformer}})$$
+### Mesh Data
 
-for
+* spherical mesh vertices;
+* KNN neighbourhood indices;
+* geodesic distances;
+* mesh metadata;
+* coordinate mappings.
 
-$$M\in\lbrace\mathrm{HR@10},\mathrm{NDCG@10}\rbrace.$$
+### Cached Data
 
-The observed results satisfy both inequalities:
+* baseline grid caches;
+* spherical mesh caches;
+* integrity summaries;
+* sample manifests;
+* temporary atomic-write files.
 
-$$\mathrm{HR@10}(f_{\mathrm{HGNN}})>\mathrm{HR@10}(f_{\mathrm{Transformer}})$$
+### Evaluation Outputs
 
-and
-
-$$\mathrm{NDCG@10}(f_{\mathrm{HGNN}})>\mathrm{NDCG@10}(f_{\mathrm{Transformer}}).$$
-
-The project therefore provides evidence for the principle
-
-$$\text{representational structure matters independently of model generality}.$$
-
-A structurally specialised model can outperform a more general sequence architecture when its mathematical representation more closely matches the data-generating process.
+* metric tables;
+* wind-field comparisons;
+* magnitude-error maps;
+* angular-error maps;
+* hemispheric evaluations;
+* improvement heatmaps;
+* composite-score summaries.
 
 ---
 
-## 19. Limitations
+## 22. Limitations
 
-The results do not prove that
+The experiment does not establish universal superiority of spherical models over planar CNNs.
 
-$$f_{\mathrm{HGNN}}>f_{\mathrm{Transformer}}$$
+The spherical model performs worse on:
 
-for every dataset, architecture, or hyperparameter configuration.
+* angular error;
+* divergence absolute error.
 
-Observed performance depends on
+Performance depends on
 
-$$M=F(\mathcal{D},\mathcal{H},\theta,\Omega,\mathcal{S},\mathcal{B}),$$
+$$M=F(\mathcal{D},\mathcal{M},\theta,\Omega,\Lambda,\Delta t),$$
 
 where:
 
-* $\mathcal{D}$ is the dataset;
-* $\mathcal{H}$ is the hypergraph construction;
+* $\mathcal{D}$ is the ERA5 dataset;
+* $\mathcal{M}$ is the spherical mesh;
 * $\theta$ is the model parameterisation;
 * $\Omega$ is the optimisation procedure;
-* $\mathcal{S}$ is the sampling strategy;
-* $\mathcal{B}$ is the baseline configuration.
+* $\Lambda$ is the collection of loss weights;
+* $\Delta t$ is the forecast horizon.
 
-The correct conclusion is limited to the implemented experiment:
+The benchmark-specific conclusion is:
 
-$$\text{HGNN}>\text{selected Transformer baseline}$$
+$$\text{spherical model}>\text{baseline CNN}$$
 
-for the reported bundle-discovery metrics under the controlled benchmark configuration.
+for seven of the nine reported metric rows and for the composite score.
 
----
-
-## 20. Author
-
-**Harshwardhan Singh**
-
-Mathematical AI researcher working across:
-
-* graph and hypergraph learning;
-* topological feature extraction;
-* spectral optimisation;
-* quantum-encoded machine learning;
-* structured representations;
-* autonomous decision systems;
-* mathematical intelligence layers for cybersecurity.
-
-GitHub: [github.com/Hars15kth](https://github.com/Hars15kth)
-
-LinkedIn: [linkedin.com/in/harshwardhan-singh-2b1453318](https://linkedin.com/in/harshwardhan-singh-2b1453318)
+Directional and divergence performance may require additional physical constraints or revised loss weighting.
 
 ---
 
 ## Core Result
 
-$$\mathrm{HR@10}*{\mathrm{HGNN}}=0.842>0.611=\mathrm{HR@10}*{\mathrm{Transformer}}.$$
+$$\mathrm{MSE}*{\mathrm{sph}}=0.5257<0.5319=\mathrm{MSE}*{\mathrm{CNN}}.$$
 
-$$\mathrm{NDCG@10}*{\mathrm{HGNN}}=0.791>0.574=\mathrm{NDCG@10}*{\mathrm{Transformer}}.$$
+$$\mathrm{MagMAE}*{\mathrm{sph}}=0.4546<0.5512=\mathrm{MagMAE}*{\mathrm{CNN}}.$$
 
-Therefore, for this benchmark,
+$$\mathrm{MSE}*{\mathrm{South,sph}}=0.4279<0.4370=\mathrm{MSE}*{\mathrm{South,CNN}}.$$
 
-$$\text{explicit higher-order structure}>\text{pairwise-attention baseline}.$$
+$$\mathrm{Composite}*{\mathrm{sph}}=0.6676<0.6798=\mathrm{Composite}*{\mathrm{CNN}}.$$
+
+The benchmark supports the principle:
+
+$$\text{geometry-aware equivariant modelling}>\text{planar modelling alone}$$
+
+for the dominant global-field metrics in this ERA5 wind-prediction experiment.
+
+---
+
+## Licence
+
+This repository is licensed for personal portfolio and evaluation use only.
+
+Redistribution, commercial use, resale, or incorporation into commercial systems is prohibited without explicit written permission from the author.
+
 
 
 
