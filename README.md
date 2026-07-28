@@ -246,7 +246,8 @@ ordinary edges.
 
 However, as relational objects,
 
-$$e\neq\Pi_2(e),\qquad \Pi_2(e)=\bigcup_{1\leq i<j\leq r}(v_i,v_j).$$
+$$e\neq\Pi_2(e).$$
+where $\Pi_2(e)$ denotes the pairwise projection of the hyperedge $e$.
 
 The pairwise expansion records that individual pairs are connected, but it does not necessarily preserve the fact that all $r$ entities participated in one common event.
 
