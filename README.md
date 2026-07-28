@@ -246,7 +246,7 @@ ordinary edges.
 
 However, as relational objects,
 
-$$e\neq\bigcup_{1\leq i<j\leq r}\{(v_i,v_j)\}.$$
+$$e\neq\bigcup_{1\leq i<j\leq r}\left\{(v_i,v_j)\right\}.$$
 
 The pairwise expansion records that individual pairs are connected, but it does not necessarily preserve the fact that all $r$ entities participated in one common event.
 
